@@ -1,0 +1,28 @@
+  int soma(int a, int b) then
+      return a + b;                                                                                                                        
+  end
+                                                                                                                                           
+  int x, y, resultado;                                                                                                                     
+  int arr[5];
+  int i;                                                                                                                                   
+                                                            
+  read(x);
+  read(y);
+
+  resultado = soma(x, y);                                                                                                                  
+  write(resultado);
+                                                                                                                                           
+  for (i = 0; i < 5; i = i + 1) then                        
+      arr[i] = i * 2;
+      write(arr[i]);
+  end
+
+  if (resultado > 10) then                                                                                                                 
+      write("greater than 10");
+  else                                                                                                                                     
+      write("10 or less");                                  
+  end
+
+  do
+      read(x);
+  while (x != 0);
