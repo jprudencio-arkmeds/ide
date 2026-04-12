@@ -1,4 +1,0 @@
-/home/arkmeds/compilador/build/CMakeFiles/compilador.dir
-/home/arkmeds/compilador/build/CMakeFiles/edit_cache.dir
-/home/arkmeds/compilador/build/CMakeFiles/rebuild_cache.dir
-/home/arkmeds/compilador/build/CMakeFiles/compilador_autogen.dir
