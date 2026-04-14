@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
 file(GLOB SOURCES
     src/main.cpp
@@ -21,5 +21,5 @@ file(GLOB HEADERS
 )
 
 add_executable(compilador ${SOURCES} ${HEADERS})
-target_link_libraries(compilador Qt5::Widgets)
+target_link_libraries(compilador Qt6::Widgets)
 target_include_directories(compilador PRIVATE src src/gals)

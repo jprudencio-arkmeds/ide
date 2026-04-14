@@ -78,12 +78,12 @@ num_real: {d}+\.{d}+
 <exp9> ::= <op_neg> <exp10> | <exp10>;
 <exp10> ::= num_int | num_real | id | "(" <exp> ")";
 
-<op_rel> ::= ">" | "<" | ">=" | "<=" | "=" | "!="; 
+<op_rel> ::= ">" | "<" | ">=" | "<=" | "==" | "!=";
 <op_neg> ::= "-" | "~" | "!";
 <op_bitwise> ::= "<<" | ">>";
 <op_arit_baixa> ::= "+" | "-";
 <op_arit_alta> ::= "*" | "/" | "%";
 
-
-//Exemplo com tudo para ser usado no simulador
+// Exemplo completo para o simulador GALS (copie a linha abaixo para a entrada da expressao).
+// Na IDE Compilador, igualdade e sempre "==" (alinhado com <op_rel> acima).
 // -x + 8.8 - !x * 2 / ~y % 3 << 7 != y >> 3 || (x <= 3 && y > 8) | p & (h ^ g)
