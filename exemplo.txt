@@ -1,217 +1,186 @@
-/* ─────────────────────────────────────────────
-   Exemplo equivalente em C
-   Cobre: tipos, arrays, funções, void,
+/* Exemplo completo - linguagem da IDE Compilador
+   Cobre: tipos, arrays, funcoes, procedimentos,
    if/else, while, for, do-while, break, continue,
-   return, scanf/printf, recursão, operadores.
-   ───────────────────────────────────────────── */
+   return, read, write, recursao, operadores.
+   (Use apenas tokens desta linguagem: sem #include, sem chaves C, sem nomes com ponto.)
+*/
 
-#include <stdio.h>
-#include <string.h>
+// --- Funcoes auxiliares ---
 
-/* ── Funções auxiliares ────────────────────────── */
-
-int fatorial(int n)
-{
-    if (n <= 1) {
+int fatorial(int n) then
+    if (n <= 1) then
         return 1;
-    }
+    end
     return n * fatorial(n - 1);
-}
+end
 
-int potencia(int base, int exp)
-{
+int potencia(int base, int exp) then
     int resultado;
     resultado = 1;
-    while (exp > 0) {
+    while (exp > 0) then
         resultado = resultado * base;
         exp = exp - 1;
-    }
+    end
     return resultado;
-}
+end
 
-int maximo(int a, int b)
-{
-    if (a > b) {
+int maximo(int a, int b) then
+    if (a > b) then
         return a;
-    } else {
+    else
         return b;
-    }
-}
+    end
+end
 
-void bubbleSort(int arr[], int n)
-{
+void bubbleSort(int arr[], int n) then
     int i;
     int j;
     int temp;
-    for (i = 0; i < n - 1; i = i + 1) {
-        for (j = 0; j < n - i - 1; j = j + 1) {
-            if (arr[j] > arr[j + 1]) {
+    for (i = 0; i < n - 1; i = i + 1) then
+        for (j = 0; j < n - i - 1; j = j + 1) then
+            if (arr[j] > arr[j + 1]) then
                 temp = arr[j];
                 arr[j] = arr[j + 1];
                 arr[j + 1] = temp;
-            }
-        }
-    }
-}
+            end
+        end
+    end
+end
 
-int somatorio(int arr[], int tam)
-{
+int somatorio(int arr[], int tam) then
     int total;
     int i;
     total = 0;
     i = 0;
-    while (i < tam) {
+    while (i < tam) then
         total = total + arr[i];
         i = i + 1;
-    }
+    end
     return total;
-}
+end
 
-/* ── Programa principal ────────────────────────── */
+// --- Programa principal (itens globais) ---
 
-int main(void)
-{
-    /* --- Tipos básicos --- */
-    int a;
-    int b;
-    float pi;
-    char letra;
-    char mensagem[64];
+int a;
+int b;
+float pi;
+char letra;
+string mensagem;
 
-    int contador;
-    int i;
-    int soma;
-    int x;
-    int v[8];
-    int bin;
-    int hex;
-    char nome[64];
-    int entrada;
+a = 10;
+b = 3;
+pi = 3.14159;
+letra = 'A';
+mensagem = "Ola, compilador!";
 
-    a = 10;
-    b = 3;
-    pi = 3.14159f;
-    letra = 'A';
-    strcpy(mensagem, "Ola, compilador!");
+write(mensagem);
 
-    puts(mensagem);
+write(a + b);
+write(a - b);
+write(a * b);
+write(a / b);
+write(a % b);
 
-    /* --- Operadores aritméticos --- */
-    printf("%d\n", a + b);
-    printf("%d\n", a - b);
-    printf("%d\n", a * b);
-    printf("%d\n", a / b);
-    printf("%d\n", a % b);
+if (a > b && b > 0) then
+    write("a maior que b, b positivo");
+end
 
-    /* --- Operadores relacionais e lógicos --- */
-    if (a > b && b > 0) {
-        puts("a maior que b, b positivo");
-    }
+if (a == 10 || b == 0) then
+    write("a eh 10 ou b eh 0");
+end
 
-    if (a == 10 || b == 0) {
-        puts("a eh 10 ou b eh 0");
-    }
+if (!(a < 0)) then
+    write("a nao eh negativo");
+end
 
-    if (!(a < 0)) {
-        puts("a nao eh negativo");
-    }
+write(a & b);
+write(a | b);
+write(a ^ b);
+write(a << 2);
+write(a >> 1);
+write(~a);
 
-    /* --- Operadores bit a bit --- */
-    printf("%d\n", a & b);
-    printf("%d\n", a | b);
-    printf("%d\n", a ^ b);
-    printf("%d\n", a << 2);
-    printf("%d\n", a >> 1);
-    printf("%d\n", ~a);
+if (a > 100) then
+    write("grande");
+else
+    if (a > 50) then
+        write("medio");
+    else
+        write("pequeno");
+    end
+end
 
-    /* --- if / else if / else --- */
-    if (a > 100) {
-        puts("grande");
-    } else {
-        if (a > 50) {
-            puts("medio");
-        } else {
-            puts("pequeno");
-        }
-    }
+int contador;
+contador = 0;
+while (contador < 20) then
+    if (contador == 7) then
+        break;
+    end
+    contador = contador + 1;
+end
+write(contador);
 
-    /* --- while com break --- */
-    contador = 0;
-    while (contador < 20) {
-        if (contador == 7) {
-            break;
-        }
-        contador = contador + 1;
-    }
-    printf("%d\n", contador);
+int i;
+int soma;
+soma = 0;
+for (i = 1; i <= 10; i = i + 1) then
+    if (i % 2 == 0) then
+        continue;
+    end
+    soma = soma + i;
+end
+write(soma);
 
-    /* --- for com continue --- */
-    soma = 0;
-    for (i = 1; i <= 10; i = i + 1) {
-        if (i % 2 == 0) {
-            continue;
-        }
-        soma = soma + i;
-    }
-    printf("%d\n", soma);
+int x;
+x = 1;
+do
+    x = x * 2;
+while (x < 100);
+write(x);
 
-    /* --- do-while --- */
-    x = 1;
-    do {
-        x = x * 2;
-    } while (x < 100);
-    printf("%d\n", x);
+int v[8];
+for (i = 0; i < 8; i = i + 1) then
+    v[i] = (i + 1) * (i + 1);
+end
 
-    /* --- Arrays --- */
-    for (i = 0; i < 8; i = i + 1) {
-        v[i] = (i + 1) * (i + 1);
-    }
+for (i = 0; i < 8; i = i + 1) then
+    write(v[i]);
+end
 
-    for (i = 0; i < 8; i = i + 1) {
-        printf("%d\n", v[i]);
-    }
+bubbleSort(v, 8);
+write("Apos ordenacao:");
+for (i = 0; i < 8; i = i + 1) then
+    write(v[i]);
+end
 
-    bubbleSort(v, 8);
-    puts("Apos ordenacao:");
-    for (i = 0; i < 8; i = i + 1) {
-        printf("%d\n", v[i]);
-    }
+write("Somatorio:");
+write(somatorio(v, 8));
 
-    puts("Somatório:");
-    printf("%d\n", somatorio(v, 8));
+write("Fatorial de 10:");
+write(fatorial(10));
 
-    /* --- Recursão --- */
-    puts("Fatorial de 10:");
-    printf("%d\n", fatorial(10));
+write("2 elevado a 8:");
+write(potencia(2, 8));
 
-    puts("2 elevado a 8:");
-    printf("%d\n", potencia(2, 8));
+write("Maximo entre 42 e 17:");
+write(maximo(42, 17));
 
-    puts("Maximo entre 42 e 17:");
-    printf("%d\n", maximo(42, 17));
+int bin;
+int hex;
+bin = 0b1010;
+hex = 0xFF;
+write(bin);
+write(hex);
+write(bin & hex);
+write(bin | hex);
 
-    /* --- Literais binário e hexadecimal --- */
-    /* 0b1010 em C23; em C89/C99 use decimal ou expressão */
-    bin = 10; /* equivalente a 0b1010 */
-    hex = 0xFF;
-    printf("%d\n", bin);
-    printf("%d\n", hex);
-    printf("%d\n", bin & hex);
-    printf("%d\n", bin | hex);
+string nome;
+nome = "Compilador";
+write(nome);
+write(letra);
 
-    /* --- Strings e chars --- */
-    strcpy(nome, "Compilador");
-    puts(nome);
-    printf("%c\n", letra);
-
-    /* --- Leitura de entrada --- */
-    puts("Digite um numero:");
-    if (scanf("%d", &entrada) != 1) {
-        return 1;
-    }
-    printf("%d\n", entrada);
-    printf("%d\n", entrada * entrada);
-
-    (void)pi; /* evita aviso se não usar pi em printf */
-    return 0;
-}
+write("Digite um numero:");
+int entrada;
+read(entrada);
+write(entrada);
+write(entrada * entrada);

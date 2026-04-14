@@ -452,37 +452,86 @@ ExprPtr Sintatico::parseExprOrTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Sintatico::parseExprAnd()              { return parseExprAndTail(parseExprNot()); }
+ExprPtr Sintatico::parseExprAnd()              { return parseExprAndTail(parseExprEquality()); }
 ExprPtr Sintatico::parseExprAndTail(ExprPtr left) {
     while (check(TokenType::AND)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
-        n->op = op.type; n->left = left; n->right = parseExprNot();
+        n->op = op.type; n->left = left; n->right = parseExprEquality();
         left = n;
     }
     return left;
 }
 
-ExprPtr Sintatico::parseExprNot() {
-    if (check(TokenType::NOT)) {
+ExprPtr Sintatico::parseExprEquality() { return parseExprEqualityTail(parseExprBitOr()); }
+
+ExprPtr Sintatico::parseExprEqualityTail(ExprPtr left) {
+    while (check(TokenType::EQUAL) || check(TokenType::NOT_EQUAL)) {
         Token op = consume();
-        auto n = std::make_shared<UnaryExpr>();
-        n->op = op.type; n->operand = parseExprNot();
-        return n;
+        auto n = std::make_shared<BinOpExpr>();
+        n->op = op.type; n->left = left; n->right = parseExprBitOr();
+        left = n;
     }
-    return parseExprRel();
+    return left;
 }
 
-ExprPtr Sintatico::parseExprRel()            { return parseRelTail(parseExprAdd()); }
-ExprPtr Sintatico::parseRelTail(ExprPtr left) {
-    TokenType t = current().type;
-    if (t == TokenType::EQUAL    || t == TokenType::NOT_EQUAL ||
-        t == TokenType::GREATER  || t == TokenType::LESS      ||
-        t == TokenType::GREATER_EQUAL || t == TokenType::LESS_EQUAL) {
+ExprPtr Sintatico::parseExprBitOr() { return parseExprBitOrTail(parseExprBitXor()); }
+
+ExprPtr Sintatico::parseExprBitOrTail(ExprPtr left) {
+    while (check(TokenType::BIT_OR)) {
+        Token op = consume();
+        auto n = std::make_shared<BinOpExpr>();
+        n->op = op.type; n->left = left; n->right = parseExprBitXor();
+        left = n;
+    }
+    return left;
+}
+
+ExprPtr Sintatico::parseExprBitXor() { return parseExprBitXorTail(parseExprBitAnd()); }
+
+ExprPtr Sintatico::parseExprBitXorTail(ExprPtr left) {
+    while (check(TokenType::BIT_XOR)) {
+        Token op = consume();
+        auto n = std::make_shared<BinOpExpr>();
+        n->op = op.type; n->left = left; n->right = parseExprBitAnd();
+        left = n;
+    }
+    return left;
+}
+
+ExprPtr Sintatico::parseExprBitAnd() { return parseExprBitAndTail(parseExprRelStrict()); }
+
+ExprPtr Sintatico::parseExprBitAndTail(ExprPtr left) {
+    while (check(TokenType::BIT_AND)) {
+        Token op = consume();
+        auto n = std::make_shared<BinOpExpr>();
+        n->op = op.type; n->left = left; n->right = parseExprRelStrict();
+        left = n;
+    }
+    return left;
+}
+
+ExprPtr Sintatico::parseExprRelStrict() { return parseExprRelStrictTail(parseExprShift()); }
+
+ExprPtr Sintatico::parseExprRelStrictTail(ExprPtr left) {
+    while (check(TokenType::GREATER) || check(TokenType::LESS) ||
+           check(TokenType::GREATER_EQUAL) || check(TokenType::LESS_EQUAL)) {
+        Token op = consume();
+        auto n = std::make_shared<BinOpExpr>();
+        n->op = op.type; n->left = left; n->right = parseExprShift();
+        left = n;
+    }
+    return left;
+}
+
+ExprPtr Sintatico::parseExprShift() { return parseExprShiftTail(parseExprAdd()); }
+
+ExprPtr Sintatico::parseExprShiftTail(ExprPtr left) {
+    while (check(TokenType::SHIFT_LEFT) || check(TokenType::SHIFT_RIGHT)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
         n->op = op.type; n->left = left; n->right = parseExprAdd();
-        return n;
+        left = n;
     }
     return left;
 }
@@ -510,7 +559,7 @@ ExprPtr Sintatico::parseExprMulTail(ExprPtr left) {
 }
 
 ExprPtr Sintatico::parseExprUnary() {
-    if (check(TokenType::MINUS) || check(TokenType::BIT_NOT)) {
+    if (check(TokenType::NOT) || check(TokenType::MINUS) || check(TokenType::BIT_NOT)) {
         Token op = consume();
         auto n = std::make_shared<UnaryExpr>();
         n->op = op.type; n->operand = parseExprUnary();
