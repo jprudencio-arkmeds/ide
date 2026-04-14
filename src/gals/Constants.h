@@ -1,19 +1,22 @@
-#pragma once
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
 #include <QString>
 
+// Full token type enum — used by Lexico, Sintatico, AST and Interpreter.
 enum class TokenType {
     WS,
     COMMENT_LINE,
     COMMENT_MULTILINE,
 
-    LEFT_BRACKET,
-    RIGHT_BRACKET,
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    LEFT_BRACE,
-    RIGHT_BRACE,
-    SEPARATOR,
-    END_LINE,
+    LEFT_BRACKET,   // [
+    RIGHT_BRACKET,  // ]
+    LEFT_PAREN,     // (
+    RIGHT_PAREN,    // )
+    LEFT_BRACE,     // {
+    RIGHT_BRACE,    // }
+    SEPARATOR,      // ,
+    END_LINE,       // ;
 
     KW_IF,
     KW_THEN,
@@ -71,16 +74,10 @@ enum class TokenType {
     UNKNOWN
 };
 
-struct Token {
-    TokenType type;
-    QString   value;
-    int       line;
-    int       col;
-
-    Token() : type(TokenType::UNKNOWN), value(""), line(0), col(0) {}
-    Token(TokenType t, const QString& v, int l, int c)
-        : type(t), value(v), line(l), col(c) {}
-};
+// GALS alias — keeps the Semantico/Token GALS interface compiling.
+using TokenId = TokenType;
 
 QString tokenTypeName(TokenType type);
 bool    isTypeKeyword(TokenType type);
+
+#endif

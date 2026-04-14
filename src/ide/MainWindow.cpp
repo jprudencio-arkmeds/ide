@@ -1,8 +1,8 @@
 #include "MainWindow.h"
-#include "lexer/Lexer.h"
-#include "parser/Parser.h"
+#include "gals/Lexico.h"
+#include "gals/Sintatico.h"
+#include "gals/Semantico.h"
 #include "interpreter/Interpreter.h"
-#include "interpreter/AST.h"
 
 #include <QSplitter>
 #include <QMenuBar>
@@ -19,7 +19,8 @@
 #include <QTextCursor>
 #include <QVBoxLayout>
 #include <QLabel>
-#include <QHeaderView>
+
+// ── helpers ────────────────────────────────────────────────────────────────
 
 static QFont panelFont() {
     QFont f;
@@ -39,6 +40,8 @@ static QPalette darkPalette() {
     p.setColor(QPalette::WindowText,      QColor("#e8d5ff"));
     return p;
 }
+
+// ── MainWindow ──────────────────────────────────────────────────────────────
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setupUI();
@@ -198,6 +201,8 @@ bool MainWindow::saveFileAs() {
     return saveFile();
 }
 
+// ── Compile pipeline ────────────────────────────────────────────────────────
+
 void MainWindow::compile() {
     clearMessages();
     m_tokenPanel->clear();
@@ -208,9 +213,11 @@ void MainWindow::compile() {
         return;
     }
 
+    // ── Lexical Analysis ──────────────────────────────────────────────────
     appendMessage(m_compilePanel, "=== Lexical Analysis ===");
-    Lexer lexer(source);
-    const std::vector<Token> tokens = lexer.tokenize();
+
+    Lexico lexico(source);
+    const std::vector<Token> tokens = lexico.tokenize();
 
     int unknowns = 0;
     for (const Token& t : tokens)
@@ -231,43 +238,49 @@ void MainWindow::compile() {
 
     showTokens(tokens);
 
+    if (unknowns > 0) {
+        m_statusLabel->setText(QString("Lexical errors: %1").arg(unknowns));
+        m_tabs->setCurrentIndex(0);
+        return;
+    }
+
+    // ── Syntactic Analysis ────────────────────────────────────────────────
     appendMessage(m_compilePanel, "");
     appendMessage(m_compilePanel, "=== Syntactic Analysis ===");
 
-    Parser parser(tokens);
-    bool ok = parser.parse();
+    Lexico   lexico2(source);
+    Semantico semantico;
+    Sintatico sintatico;
+    sintatico.parse(&lexico2, &semantico);
 
-    if (!ok) {
-        for (const ParseError& e : parser.errors())
+    if (sintatico.hasErrors()) {
+        for (const ParseError& e : sintatico.errors())
             appendMessage(m_compilePanel,
                 QString("  [ERROR] Line %1, Col %2: %3")
                     .arg(e.line).arg(e.col).arg(e.message), MSG_ERROR);
         appendMessage(m_compilePanel,
-            QString("\n  %1 syntax error(s) found.").arg(parser.errors().size()), MSG_ERROR);
+            QString("\n  %1 syntax error(s) found.")
+                .arg(sintatico.errors().size()), MSG_ERROR);
         m_statusLabel->setText(
-            QString("Compilation failed: %1 error(s)").arg(parser.errors().size()));
+            QString("Compilation failed: %1 error(s)").arg(sintatico.errors().size()));
         m_tabs->setCurrentIndex(0);
         return;
     }
 
     appendMessage(m_compilePanel, "  Program parsed successfully.", MSG_SUCCESS);
 
+    // ── Execution ─────────────────────────────────────────────────────────
     appendMessage(m_compilePanel, "");
     appendMessage(m_compilePanel, "=== Execution ===");
     m_tabs->setCurrentIndex(1);
-    runInterpreter(parser.ast());
+    runInterpreter(sintatico.ast());
 }
 
 void MainWindow::showTokens(const std::vector<Token>& tokens) {
     m_tokenPanel->clear();
-    QString header = QString(" %1  %2  %-18s  %3\n")
-        .arg("Line", 4).arg("Col", 4).arg("Type").arg("Value");
-    QString sep(60, '-');
-
     QString out;
-    out += QString(" %1  %2  %-20s  %3\n")
-        .arg("Line", 4).arg("Col", 3).arg("Type").arg("Value");
-    out += sep + "\n";
+    out += QString(" %1  %2  %-20s  %3\n").arg("Line", 4).arg("Col", 3).arg("Type").arg("Value");
+    out += QString(60, '-') + "\n";
 
     for (const Token& t : tokens) {
         if (t.type == TokenType::END_OF_FILE) continue;
@@ -288,8 +301,7 @@ void MainWindow::runInterpreter(const std::shared_ptr<ProgramNode>& ast) {
         bool ok;
         QString v = QInputDialog::getText(this, "Input", prompt,
                                           QLineEdit::Normal, "", &ok);
-        appendMessage(m_outputPanel,
-            prompt + (ok ? v : "(cancelled)"), MSG_WARNING);
+        appendMessage(m_outputPanel, prompt + (ok ? v : "(cancelled)"), MSG_WARNING);
         return ok ? v : "0";
     };
 
@@ -299,7 +311,7 @@ void MainWindow::runInterpreter(const std::shared_ptr<ProgramNode>& ast) {
         appendMessage(m_compilePanel, "  Execution completed.", MSG_SUCCESS);
         m_statusLabel->setText("Done");
     } catch (const RuntimeError& e) {
-        appendMessage(m_outputPanel, "[RUNTIME ERROR] " + e.msg, MSG_ERROR);
+        appendMessage(m_outputPanel,  "[RUNTIME ERROR] " + e.msg, MSG_ERROR);
         appendMessage(m_compilePanel, "  Execution failed: " + e.msg, MSG_ERROR);
         m_statusLabel->setText("Runtime error");
     } catch (const std::exception& e) {

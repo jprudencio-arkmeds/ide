@@ -1,4 +1,4 @@
-#include "Token.h"
+#include "Constants.h"
 
 QString tokenTypeName(TokenType type) {
     switch (type) {

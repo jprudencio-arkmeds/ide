@@ -1,33 +1,44 @@
-#pragma once
-#include "lexer/Token.h"
-#include "interpreter/AST.h"
+#ifndef SINTATICO_H
+#define SINTATICO_H
+
+#include "Lexico.h"
+#include "Semantico.h"
+#include "SyntacticError.h"
+#include "AST.h"
 #include <vector>
-#include <QString>
 #include <memory>
+#include <QString>
 
 struct ParseError {
     int     line, col;
     QString message;
 };
 
-class Parser {
+// Recursive-descent LL(1) parser.
+// parse() tokenises via Lexico, builds an AST and stores any errors.
+// The Semantico parameter is accepted for GALS interface compatibility
+// but is not used — semantic actions are embedded in the parser.
+
+class Sintatico {
 public:
-    explicit Parser(const std::vector<Token>& tokens);
+    Sintatico() = default;
 
-    bool parse();
+    void parse(Lexico* scanner, Semantico* semanticAnalyser);
 
-    const std::vector<ParseError>&      errors()    const { return m_errors; }
-    bool                                hasErrors() const { return !m_errors.empty(); }
-    std::shared_ptr<ProgramNode>        ast()       const { return m_ast; }
+    std::shared_ptr<ProgramNode>   ast()       const { return m_ast; }
+    const std::vector<ParseError>& errors()    const { return m_errors; }
+    bool                           hasErrors() const { return !m_errors.empty(); }
 
 private:
     std::vector<Token>           m_tokens;
-    size_t                       m_pos;
+    size_t                       m_pos = 0;
     std::vector<ParseError>      m_errors;
     std::shared_ptr<ProgramNode> m_ast;
 
+    static const Token& eofToken();
+
     const Token& current()             const;
-    const Token& peekToken(int offset) const;
+    const Token& peek(int offset)      const;
     Token        consume();
     bool         check(TokenType type) const;
     bool         isType()              const;
@@ -87,3 +98,5 @@ private:
     ExprPtr parseExprPrimary();
     ExprPtr parseIdExprTail (const Token& id);
 };
+
+#endif

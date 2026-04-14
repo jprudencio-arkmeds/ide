@@ -7,8 +7,8 @@
 #include <vector>
 #include <memory>
 #include "CodeEditor.h"
-#include "lexer/Token.h"
-#include "interpreter/AST.h"
+#include "gals/Token.h"
+#include "gals/AST.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -29,8 +29,8 @@ private:
     void setupStatusBar();
 
     enum MessageKind { MSG_INFO, MSG_SUCCESS, MSG_WARNING, MSG_ERROR };
-    void appendMessage (QTextEdit* panel, const QString& text, MessageKind kind = MSG_INFO);
-    void clearMessages ();
+    void appendMessage(QTextEdit* panel, const QString& text, MessageKind kind = MSG_INFO);
+    void clearMessages();
     void showTokens    (const std::vector<Token>& tokens);
     void runInterpreter(const std::shared_ptr<ProgramNode>& ast);
 

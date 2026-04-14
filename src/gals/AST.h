@@ -1,5 +1,5 @@
 #pragma once
-#include "lexer/Token.h"
+#include "Constants.h"
 #include <memory>
 #include <vector>
 #include <QString>
@@ -44,8 +44,8 @@ struct AssignNode : Stmt {
 };
 
 struct CallStmtNode : Stmt {
-    QString                func;
-    std::vector<ExprPtr>   args;
+    QString              func;
+    std::vector<ExprPtr> args;
 };
 
 struct IfNode : Stmt {

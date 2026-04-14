@@ -1,5 +1,5 @@
 #pragma once
-#include "AST.h"
+#include "gals/AST.h"
 #include "Value.h"
 #include <functional>
 #include <QMap>

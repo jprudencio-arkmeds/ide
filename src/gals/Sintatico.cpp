@@ -1,43 +1,54 @@
-#include "Parser.h"
+#include "Sintatico.h"
 
-Parser::Parser(const std::vector<Token>& tokens)
-    : m_tokens(tokens), m_pos(0)
-{}
+// ── Bootstrap ───────────────────────────────────────────────────────────────
 
-bool Parser::parse() {
+void Sintatico::parse(Lexico* scanner, Semantico* /*semanticAnalyser*/) {
+    m_tokens.clear();
     m_errors.clear();
+    m_pos = 0;
+
+    // Collect all tokens from the lexer.
+    m_tokens = scanner->tokenize();
+
     m_ast = parseProgram();
-    return !hasErrors();
 }
 
-static const Token EOF_TOKEN(TokenType::END_OF_FILE, "", 0, 0);
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-const Token& Parser::current() const {
-    if (m_pos >= m_tokens.size()) return EOF_TOKEN;
+const Token& Sintatico::eofToken() {
+    static const Token eof(TokenType::END_OF_FILE, "", 0, 0);
+    return eof;
+}
+
+const Token& Sintatico::current() const {
+    if (m_pos >= m_tokens.size()) return eofToken();
     return m_tokens[m_pos];
 }
-const Token& Parser::peekToken(int offset) const {
+
+const Token& Sintatico::peek(int offset) const {
     size_t idx = m_pos + static_cast<size_t>(offset);
-    if (idx >= m_tokens.size()) return EOF_TOKEN;
+    if (idx >= m_tokens.size()) return eofToken();
     return m_tokens[idx];
 }
-Token Parser::consume() {
+
+Token Sintatico::consume() {
     Token t = current();
     if (m_pos < m_tokens.size()) m_pos++;
     return t;
 }
-bool Parser::check(TokenType type) const { return current().type == type; }
-bool Parser::isType() const { return isTypeKeyword(current().type); }
-bool Parser::atEnd()  const { return check(TokenType::END_OF_FILE); }
 
-void Parser::addError(const QString& msg) {
+bool Sintatico::check(TokenType type) const { return current().type == type; }
+bool Sintatico::isType()              const { return isTypeKeyword(current().type); }
+bool Sintatico::atEnd()               const { return check(TokenType::END_OF_FILE); }
+
+void Sintatico::addError(const QString& msg) {
     if (!m_errors.empty() &&
         m_errors.back().line == current().line &&
         m_errors.back().col  == current().col) return;
     m_errors.push_back({current().line, current().col, msg});
 }
 
-bool Parser::expect(TokenType type, const QString& ctx) {
+bool Sintatico::expect(TokenType type, const QString& ctx) {
     if (check(type)) { consume(); return true; }
     QString where = ctx.isEmpty() ? "" : " in " + ctx;
     QString found = current().value.isEmpty()
@@ -48,7 +59,7 @@ bool Parser::expect(TokenType type, const QString& ctx) {
     return false;
 }
 
-void Parser::synchronize() {
+void Sintatico::synchronize() {
     while (!atEnd()) {
         if (check(TokenType::END_LINE)) { consume(); return; }
         if (check(TokenType::KW_END) || check(TokenType::KW_ELSE)) return;
@@ -56,7 +67,9 @@ void Parser::synchronize() {
     }
 }
 
-std::shared_ptr<ProgramNode> Parser::parseProgram() {
+// ── Program ──────────────────────────────────────────────────────────────────
+
+std::shared_ptr<ProgramNode> Sintatico::parseProgram() {
     auto node  = std::make_shared<ProgramNode>();
     node->items = parseItemList();
     if (!atEnd())
@@ -64,7 +77,7 @@ std::shared_ptr<ProgramNode> Parser::parseProgram() {
     return node;
 }
 
-std::vector<StmtPtr> Parser::parseItemList() {
+std::vector<StmtPtr> Sintatico::parseItemList() {
     std::vector<StmtPtr> items;
     while (!atEnd()) {
         StmtPtr s = parseItem();
@@ -74,7 +87,7 @@ std::vector<StmtPtr> Parser::parseItemList() {
     return items;
 }
 
-StmtPtr Parser::parseItem() {
+StmtPtr Sintatico::parseItem() {
     if (isType()) {
         Token typeToken = consume();
         if (!check(TokenType::ID)) {
@@ -85,12 +98,11 @@ StmtPtr Parser::parseItem() {
         Token name = consume();
         return parseItemSuffix(name, typeToken.value);
     }
-    if (!atEnd())
-        return parseStatement();
+    if (!atEnd()) return parseStatement();
     return nullptr;
 }
 
-StmtPtr Parser::parseItemSuffix(const Token& name, const QString& typeName) {
+StmtPtr Sintatico::parseItemSuffix(const Token& name, const QString& typeName) {
     if (check(TokenType::LEFT_PAREN)) {
         consume();
         auto params = parseParamListOpt();
@@ -99,7 +111,7 @@ StmtPtr Parser::parseItemSuffix(const Token& name, const QString& typeName) {
         auto body = parseStmtList();
         expect(TokenType::KW_END,      "function definition");
 
-        auto node    = std::make_shared<FuncDefNode>();
+        auto node     = std::make_shared<FuncDefNode>();
         node->retType = typeName;
         node->name    = name.value;
         node->params  = params;
@@ -116,25 +128,24 @@ StmtPtr Parser::parseItemSuffix(const Token& name, const QString& typeName) {
         expect(TokenType::RIGHT_BRACKET, "array declaration");
     }
     auto more = parseMoreDeclIds();
+    expect(TokenType::END_LINE, "declaration");
 
     auto node = std::make_shared<VarDeclNode>();
     node->type = typeName;
     node->vars.push_back(first);
     for (auto& v : more) node->vars.push_back(v);
-    expect(TokenType::END_LINE, "declaration");
     return node;
 }
 
-std::vector<VarEntry> Parser::parseMoreDeclIds() {
+// ── Declarations ─────────────────────────────────────────────────────────────
+
+std::vector<VarEntry> Sintatico::parseMoreDeclIds() {
     std::vector<VarEntry> vars;
-    while (check(TokenType::SEPARATOR)) {
-        consume();
-        vars.push_back(parseDeclVar());
-    }
+    while (check(TokenType::SEPARATOR)) { consume(); vars.push_back(parseDeclVar()); }
     return vars;
 }
 
-VarEntry Parser::parseDeclVar() {
+VarEntry Sintatico::parseDeclVar() {
     VarEntry v;
     if (!check(TokenType::ID)) { addError("Expected identifier"); return v; }
     v.name = consume().value;
@@ -147,19 +158,21 @@ VarEntry Parser::parseDeclVar() {
     return v;
 }
 
-std::vector<FuncParam> Parser::parseParamListOpt() {
+// ── Parameters ───────────────────────────────────────────────────────────────
+
+std::vector<FuncParam> Sintatico::parseParamListOpt() {
     if (!check(TokenType::RIGHT_PAREN)) return parseParamList();
     return {};
 }
 
-std::vector<FuncParam> Parser::parseParamList() {
+std::vector<FuncParam> Sintatico::parseParamList() {
     std::vector<FuncParam> params;
     params.push_back(parseParam());
     while (check(TokenType::SEPARATOR)) { consume(); params.push_back(parseParam()); }
     return params;
 }
 
-FuncParam Parser::parseParam() {
+FuncParam Sintatico::parseParam() {
     FuncParam p;
     if (!isType()) { addError("Expected type in parameter list"); return p; }
     p.type = consume().value;
@@ -173,7 +186,9 @@ FuncParam Parser::parseParam() {
     return p;
 }
 
-std::vector<StmtPtr> Parser::parseStmtList() {
+// ── Statements ────────────────────────────────────────────────────────────────
+
+std::vector<StmtPtr> Sintatico::parseStmtList() {
     std::vector<StmtPtr> stmts;
     while (!atEnd() && !check(TokenType::KW_END) && !check(TokenType::KW_ELSE)) {
         StmtPtr s = parseStatement();
@@ -183,7 +198,7 @@ std::vector<StmtPtr> Parser::parseStmtList() {
     return stmts;
 }
 
-StmtPtr Parser::parseStatement() {
+StmtPtr Sintatico::parseStatement() {
     if (atEnd() || check(TokenType::KW_END) || check(TokenType::KW_ELSE))
         return nullptr;
 
@@ -227,12 +242,12 @@ StmtPtr Parser::parseStatement() {
     return nullptr;
 }
 
-StmtPtr Parser::parseAssignOrCall() {
+StmtPtr Sintatico::parseAssignOrCall() {
     Token id = consume();
     return parseAssignOrCallTail(id);
 }
 
-StmtPtr Parser::parseAssignOrCallTail(const Token& id) {
+StmtPtr Sintatico::parseAssignOrCallTail(const Token& id) {
     if (check(TokenType::ASSIGN)) {
         consume();
         ExprPtr val = parseExpr();
@@ -247,7 +262,7 @@ StmtPtr Parser::parseAssignOrCallTail(const Token& id) {
         expect(TokenType::RIGHT_BRACKET, "array index");
         expect(TokenType::ASSIGN,        "array assignment");
         ExprPtr val = parseExpr();
-        expect(TokenType::END_LINE, "array assignment");
+        expect(TokenType::END_LINE,      "array assignment");
         auto n = std::make_shared<AssignNode>();
         n->var = id.value; n->index = idx; n->value = val;
         return n;
@@ -266,7 +281,7 @@ StmtPtr Parser::parseAssignOrCallTail(const Token& id) {
     return nullptr;
 }
 
-StmtPtr Parser::parseIfStmt() {
+StmtPtr Sintatico::parseIfStmt() {
     consume();
     expect(TokenType::LEFT_PAREN,  "if condition");
     ExprPtr cond = parseExpr();
@@ -280,12 +295,13 @@ StmtPtr Parser::parseIfStmt() {
     n->cond = cond; n->thenBody = thenBody; n->elseBody = elseBody;
     return n;
 }
-std::vector<StmtPtr> Parser::parseElsePart() {
+
+std::vector<StmtPtr> Sintatico::parseElsePart() {
     if (check(TokenType::KW_ELSE)) { consume(); return parseStmtList(); }
     return {};
 }
 
-StmtPtr Parser::parseWhileStmt() {
+StmtPtr Sintatico::parseWhileStmt() {
     consume();
     expect(TokenType::LEFT_PAREN,  "while condition");
     ExprPtr cond = parseExpr();
@@ -299,9 +315,9 @@ StmtPtr Parser::parseWhileStmt() {
     return n;
 }
 
-StmtPtr Parser::parseForStmt() {
+StmtPtr Sintatico::parseForStmt() {
     consume();
-    expect(TokenType::LEFT_PAREN,  "for statement");
+    expect(TokenType::LEFT_PAREN, "for statement");
     auto [initVar, initVal] = parseForInit();
     expect(TokenType::END_LINE, "for initializer");
     ExprPtr cond = parseExpr();
@@ -320,7 +336,7 @@ StmtPtr Parser::parseForStmt() {
     return n;
 }
 
-std::pair<QString,ExprPtr> Parser::parseForInit() {
+std::pair<QString,ExprPtr> Sintatico::parseForInit() {
     if (check(TokenType::ID)) {
         Token id = consume();
         expect(TokenType::ASSIGN, "for initializer");
@@ -329,7 +345,7 @@ std::pair<QString,ExprPtr> Parser::parseForInit() {
     return {"", nullptr};
 }
 
-std::pair<QString,ExprPtr> Parser::parseForPost() {
+std::pair<QString,ExprPtr> Sintatico::parseForPost() {
     if (check(TokenType::ID)) {
         Token id = consume();
         expect(TokenType::ASSIGN, "for post-operation");
@@ -338,7 +354,7 @@ std::pair<QString,ExprPtr> Parser::parseForPost() {
     return {"", nullptr};
 }
 
-StmtPtr Parser::parseDoWhileStmt() {
+StmtPtr Sintatico::parseDoWhileStmt() {
     consume();
     std::vector<StmtPtr> body;
     while (!atEnd() && !check(TokenType::KW_END) &&
@@ -358,7 +374,7 @@ StmtPtr Parser::parseDoWhileStmt() {
     return n;
 }
 
-StmtPtr Parser::parseReadStmt() {
+StmtPtr Sintatico::parseReadStmt() {
     consume();
     expect(TokenType::LEFT_PAREN, "read");
     if (!check(TokenType::ID)) { addError("Expected identifier in read"); synchronize(); return nullptr; }
@@ -375,7 +391,7 @@ StmtPtr Parser::parseReadStmt() {
     return n;
 }
 
-StmtPtr Parser::parseWriteStmt() {
+StmtPtr Sintatico::parseWriteStmt() {
     consume();
     expect(TokenType::LEFT_PAREN, "write");
     auto args = parseWriteArgList();
@@ -386,42 +402,47 @@ StmtPtr Parser::parseWriteStmt() {
     return n;
 }
 
-std::vector<ExprPtr> Parser::parseWriteArgList() {
+std::vector<ExprPtr> Sintatico::parseWriteArgList() {
     if (check(TokenType::RIGHT_PAREN)) return {};
     return parseArgList();
 }
 
-StmtPtr Parser::parseReturnStmt() {
+StmtPtr Sintatico::parseReturnStmt() {
     consume();
     ExprPtr val;
     if (!check(TokenType::END_LINE)) val = parseExpr();
     expect(TokenType::END_LINE, "return");
     auto n = std::make_shared<ReturnNode>(); n->value = val; return n;
 }
-StmtPtr Parser::parseBreakStmt() {
+
+StmtPtr Sintatico::parseBreakStmt() {
     consume(); expect(TokenType::END_LINE, "break");
     return std::make_shared<BreakNode>();
 }
-StmtPtr Parser::parseContinueStmt() {
+
+StmtPtr Sintatico::parseContinueStmt() {
     consume(); expect(TokenType::END_LINE, "continue");
     return std::make_shared<ContinueNode>();
 }
 
-std::vector<ExprPtr> Parser::parseArgListOpt() {
+// ── Arguments ─────────────────────────────────────────────────────────────────
+
+std::vector<ExprPtr> Sintatico::parseArgListOpt() {
     if (check(TokenType::RIGHT_PAREN)) return {};
     return parseArgList();
 }
-std::vector<ExprPtr> Parser::parseArgList() {
+
+std::vector<ExprPtr> Sintatico::parseArgList() {
     std::vector<ExprPtr> args;
     args.push_back(parseExpr());
     while (check(TokenType::SEPARATOR)) { consume(); args.push_back(parseExpr()); }
     return args;
 }
 
-ExprPtr Parser::parseExpr() {
-    return parseExprOrTail(parseExprAnd());
-}
-ExprPtr Parser::parseExprOrTail(ExprPtr left) {
+// ── Expressions ───────────────────────────────────────────────────────────────
+
+ExprPtr Sintatico::parseExpr()               { return parseExprOrTail(parseExprAnd()); }
+ExprPtr Sintatico::parseExprOrTail(ExprPtr left) {
     while (check(TokenType::OR)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
@@ -431,10 +452,8 @@ ExprPtr Parser::parseExprOrTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Parser::parseExprAnd() {
-    return parseExprAndTail(parseExprNot());
-}
-ExprPtr Parser::parseExprAndTail(ExprPtr left) {
+ExprPtr Sintatico::parseExprAnd()              { return parseExprAndTail(parseExprNot()); }
+ExprPtr Sintatico::parseExprAndTail(ExprPtr left) {
     while (check(TokenType::AND)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
@@ -444,7 +463,7 @@ ExprPtr Parser::parseExprAndTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Parser::parseExprNot() {
+ExprPtr Sintatico::parseExprNot() {
     if (check(TokenType::NOT)) {
         Token op = consume();
         auto n = std::make_shared<UnaryExpr>();
@@ -454,14 +473,12 @@ ExprPtr Parser::parseExprNot() {
     return parseExprRel();
 }
 
-ExprPtr Parser::parseExprRel() {
-    return parseRelTail(parseExprAdd());
-}
-ExprPtr Parser::parseRelTail(ExprPtr left) {
+ExprPtr Sintatico::parseExprRel()            { return parseRelTail(parseExprAdd()); }
+ExprPtr Sintatico::parseRelTail(ExprPtr left) {
     TokenType t = current().type;
-    if (t==TokenType::EQUAL || t==TokenType::NOT_EQUAL ||
-        t==TokenType::GREATER || t==TokenType::LESS ||
-        t==TokenType::GREATER_EQUAL || t==TokenType::LESS_EQUAL) {
+    if (t == TokenType::EQUAL    || t == TokenType::NOT_EQUAL ||
+        t == TokenType::GREATER  || t == TokenType::LESS      ||
+        t == TokenType::GREATER_EQUAL || t == TokenType::LESS_EQUAL) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
         n->op = op.type; n->left = left; n->right = parseExprAdd();
@@ -470,10 +487,8 @@ ExprPtr Parser::parseRelTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Parser::parseExprAdd() {
-    return parseExprAddTail(parseExprMul());
-}
-ExprPtr Parser::parseExprAddTail(ExprPtr left) {
+ExprPtr Sintatico::parseExprAdd()              { return parseExprAddTail(parseExprMul()); }
+ExprPtr Sintatico::parseExprAddTail(ExprPtr left) {
     while (check(TokenType::PLUS) || check(TokenType::MINUS)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
@@ -483,10 +498,8 @@ ExprPtr Parser::parseExprAddTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Parser::parseExprMul() {
-    return parseExprMulTail(parseExprUnary());
-}
-ExprPtr Parser::parseExprMulTail(ExprPtr left) {
+ExprPtr Sintatico::parseExprMul()              { return parseExprMulTail(parseExprUnary()); }
+ExprPtr Sintatico::parseExprMulTail(ExprPtr left) {
     while (check(TokenType::MULTIPLY) || check(TokenType::DIVIDE) || check(TokenType::MOD)) {
         Token op = consume();
         auto n = std::make_shared<BinOpExpr>();
@@ -496,7 +509,7 @@ ExprPtr Parser::parseExprMulTail(ExprPtr left) {
     return left;
 }
 
-ExprPtr Parser::parseExprUnary() {
+ExprPtr Sintatico::parseExprUnary() {
     if (check(TokenType::MINUS) || check(TokenType::BIT_NOT)) {
         Token op = consume();
         auto n = std::make_shared<UnaryExpr>();
@@ -506,7 +519,7 @@ ExprPtr Parser::parseExprUnary() {
     return parseExprPrimary();
 }
 
-ExprPtr Parser::parseExprPrimary() {
+ExprPtr Sintatico::parseExprPrimary() {
     if (check(TokenType::LEFT_PAREN)) {
         consume();
         ExprPtr e = parseExpr();
@@ -554,7 +567,7 @@ ExprPtr Parser::parseExprPrimary() {
     return std::make_shared<IntLitExpr>();
 }
 
-ExprPtr Parser::parseIdExprTail(const Token& id) {
+ExprPtr Sintatico::parseIdExprTail(const Token& id) {
     if (check(TokenType::LEFT_PAREN)) {
         consume();
         auto args = parseArgListOpt();
