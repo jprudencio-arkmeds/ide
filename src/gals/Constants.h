@@ -13,8 +13,6 @@ enum class TokenType {
     RIGHT_BRACKET,  // ]
     LEFT_PAREN,     // (
     RIGHT_PAREN,    // )
-    LEFT_BRACE,     // {
-    RIGHT_BRACE,    // }
     SEPARATOR,      // ,
     END_LINE,       // ;
 

@@ -126,10 +126,10 @@ Token Lexico::nextTokenInternal() {
     switch (c.toLatin1()) {
         case '[': return makeToken(TokenType::LEFT_BRACKET,  "[", sl, sc);
         case ']': return makeToken(TokenType::RIGHT_BRACKET, "]", sl, sc);
-        case '(': return makeToken(TokenType::LEFT_PAREN,    "(", sl, sc);
-        case ')': return makeToken(TokenType::RIGHT_PAREN,   ")", sl, sc);
-        case '{': return makeToken(TokenType::LEFT_BRACE,    "{", sl, sc);
-        case '}': return makeToken(TokenType::RIGHT_BRACE,   "}", sl, sc);
+        case '(': return makeToken(TokenType::LEFT_PAREN, "(", sl, sc);
+        case ')': return makeToken(TokenType::RIGHT_PAREN, ")", sl, sc);
+        case '{': return makeToken(TokenType::KW_THEN, "{", sl, sc);
+        case '}': return makeToken(TokenType::KW_END, "}", sl, sc);
         case ',': return makeToken(TokenType::SEPARATOR,     ",", sl, sc);
         case ';': return makeToken(TokenType::END_LINE,      ";", sl, sc);
         case '+': return makeToken(TokenType::PLUS,          "+", sl, sc);
@@ -250,9 +250,9 @@ Token Lexico::readIdentOrKeyword() {
 TokenType Lexico::keywordType(const QString& word) {
     static const QHash<QString, TokenType> kw = {
         {"if",       TokenType::KW_IF},
-        {"then",     TokenType::KW_THEN},
+        {"{",        TokenType::KW_THEN},
         {"else",     TokenType::KW_ELSE},
-        {"end",      TokenType::KW_END},
+        {"}",        TokenType::KW_END},
         {"int",      TokenType::KW_INT},
         {"float",    TokenType::KW_FLOAT},
         {"char",     TokenType::KW_CHAR},

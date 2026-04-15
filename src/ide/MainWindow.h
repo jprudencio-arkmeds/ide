@@ -32,7 +32,6 @@ private:
     void appendMessage(QTextEdit* panel, const QString& text, MessageKind kind = MSG_INFO);
     void clearMessages();
     void showTokens    (const std::vector<Token>& tokens);
-    void runInterpreter(const std::shared_ptr<ProgramNode>& ast);
 
     CodeEditor*     m_editor;
     QPlainTextEdit* m_tokenPanel;

@@ -268,18 +268,12 @@ void MainWindow::compile() {
     }
 
     appendMessage(m_compilePanel, "  Program parsed successfully.", MSG_SUCCESS);
-
-    // ── Execution ─────────────────────────────────────────────────────────
-    appendMessage(m_compilePanel, "");
-    appendMessage(m_compilePanel, "=== Execution ===");
-    m_tabs->setCurrentIndex(1);
-    runInterpreter(sintatico.ast());
 }
 
 void MainWindow::showTokens(const std::vector<Token>& tokens) {
     m_tokenPanel->clear();
     QString out;
-    out += QString(" %1  %2  %-20s  %3\n").arg("Line", 4).arg("Col", 3).arg("Type").arg("Value");
+    out += QString(" %1  %2  %3s  %4\n").arg("Line", 4).arg("Col", 3).arg("Type").arg("Value");
     out += QString(60, '-') + "\n";
 
     for (const Token& t : tokens) {
@@ -291,33 +285,6 @@ void MainWindow::showTokens(const std::vector<Token>& tokens) {
             .arg(t.value);
     }
     m_tokenPanel->setPlainText(out);
-}
-
-void MainWindow::runInterpreter(const std::shared_ptr<ProgramNode>& ast) {
-    auto outputFn = [this](const QString& line) {
-        appendMessage(m_outputPanel, line, MSG_INFO);
-    };
-    auto inputFn = [this](const QString& prompt) -> QString {
-        bool ok;
-        QString v = QInputDialog::getText(this, "Input", prompt,
-                                          QLineEdit::Normal, "", &ok);
-        appendMessage(m_outputPanel, prompt + (ok ? v : "(cancelled)"), MSG_WARNING);
-        return ok ? v : "0";
-    };
-
-    try {
-        Interpreter interp(outputFn, inputFn);
-        interp.run(ast);
-        appendMessage(m_compilePanel, "  Execution completed.", MSG_SUCCESS);
-        m_statusLabel->setText("Done");
-    } catch (const RuntimeError& e) {
-        appendMessage(m_outputPanel,  "[RUNTIME ERROR] " + e.msg, MSG_ERROR);
-        appendMessage(m_compilePanel, "  Execution failed: " + e.msg, MSG_ERROR);
-        m_statusLabel->setText("Runtime error");
-    } catch (const std::exception& e) {
-        appendMessage(m_outputPanel,
-            QString("[EXCEPTION] %1").arg(e.what()), MSG_ERROR);
-    }
 }
 
 void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKind kind) {
