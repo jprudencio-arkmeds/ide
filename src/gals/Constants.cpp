@@ -12,9 +12,9 @@ QString tokenTypeName(TokenType type) {
         case TokenType::SEPARATOR:         return "','";
         case TokenType::END_LINE:          return "';'";
         case TokenType::KW_IF:             return "'if'";
-        case TokenType::KW_THEN:           return "'{'";
+        case TokenType::LEFT_BRACE:           return "'{'";
         case TokenType::KW_ELSE:           return "'else'";
-        case TokenType::KW_END:            return "'}'";
+        case TokenType::RIGHT_BRACE:            return "'}'";
         case TokenType::KW_INT:            return "'int'";
         case TokenType::KW_FLOAT:          return "'float'";
         case TokenType::KW_CHAR:           return "'char'";

@@ -62,7 +62,7 @@ bool Sintatico::expect(TokenType type, const QString& ctx) {
 void Sintatico::synchronize() {
     while (!atEnd()) {
         if (check(TokenType::END_LINE)) { consume(); return; }
-        if (check(TokenType::KW_END) || check(TokenType::KW_ELSE)) return;
+        if (check(TokenType::RIGHT_BRACE) || check(TokenType::KW_ELSE)) return;
         consume();
     }
 }
@@ -107,9 +107,9 @@ StmtPtr Sintatico::parseItemSuffix(const Token& name, const QString& typeName) {
         consume();
         auto params = parseParamListOpt();
         expect(TokenType::RIGHT_PAREN, "function definition");
-        expect(TokenType::KW_THEN,     "function definition");
+        expect(TokenType::LEFT_BRACE,     "function definition");
         auto body = parseStmtList();
-        expect(TokenType::KW_END,      "function definition");
+        expect(TokenType::RIGHT_BRACE,      "function definition");
 
         auto node     = std::make_shared<FuncDefNode>();
         node->retType = typeName;
@@ -190,7 +190,7 @@ FuncParam Sintatico::parseParam() {
 
 std::vector<StmtPtr> Sintatico::parseStmtList() {
     std::vector<StmtPtr> stmts;
-    while (!atEnd() && !check(TokenType::KW_END) && !check(TokenType::KW_ELSE)) {
+    while (!atEnd() && !check(TokenType::RIGHT_BRACE) && !check(TokenType::KW_ELSE)) {
         StmtPtr s = parseStatement();
         if (s) stmts.push_back(s);
         else   break;
@@ -199,7 +199,7 @@ std::vector<StmtPtr> Sintatico::parseStmtList() {
 }
 
 StmtPtr Sintatico::parseStatement() {
-    if (atEnd() || check(TokenType::KW_END) || check(TokenType::KW_ELSE))
+    if (atEnd() || check(TokenType::RIGHT_BRACE) || check(TokenType::KW_ELSE))
         return nullptr;
 
     if (isType()) {
@@ -286,10 +286,10 @@ StmtPtr Sintatico::parseIfStmt() {
     expect(TokenType::LEFT_PAREN,  "if condition");
     ExprPtr cond = parseExpr();
     expect(TokenType::RIGHT_PAREN, "if condition");
-    expect(TokenType::KW_THEN,     "if statement");
+    expect(TokenType::LEFT_BRACE,     "if statement");
     auto thenBody = parseStmtList();
     auto elseBody = parseElsePart();
-    expect(TokenType::KW_END, "if statement");
+    expect(TokenType::RIGHT_BRACE, "if statement");
 
     auto n = std::make_shared<IfNode>();
     n->cond = cond; n->thenBody = thenBody; n->elseBody = elseBody;
@@ -306,9 +306,9 @@ StmtPtr Sintatico::parseWhileStmt() {
     expect(TokenType::LEFT_PAREN,  "while condition");
     ExprPtr cond = parseExpr();
     expect(TokenType::RIGHT_PAREN, "while condition");
-    expect(TokenType::KW_THEN,     "while statement");
+    expect(TokenType::LEFT_BRACE,     "while statement");
     auto body = parseStmtList();
-    expect(TokenType::KW_END, "while statement");
+    expect(TokenType::RIGHT_BRACE, "while statement");
 
     auto n = std::make_shared<WhileNode>();
     n->cond = cond; n->body = body;
@@ -324,9 +324,9 @@ StmtPtr Sintatico::parseForStmt() {
     expect(TokenType::END_LINE, "for condition");
     auto [postVar, postVal] = parseForPost();
     expect(TokenType::RIGHT_PAREN, "for statement");
-    expect(TokenType::KW_THEN,     "for statement");
+    expect(TokenType::LEFT_BRACE,     "for statement");
     auto body = parseStmtList();
-    expect(TokenType::KW_END, "for statement");
+    expect(TokenType::RIGHT_BRACE, "for statement");
 
     auto n = std::make_shared<ForNode>();
     n->initVar = initVar; n->initVal = initVal;
@@ -357,7 +357,7 @@ std::pair<QString,ExprPtr> Sintatico::parseForPost() {
 StmtPtr Sintatico::parseDoWhileStmt() {
     consume();
     std::vector<StmtPtr> body;
-    while (!atEnd() && !check(TokenType::KW_END) &&
+    while (!atEnd() && !check(TokenType::RIGHT_BRACE) &&
            !check(TokenType::KW_ELSE) && !check(TokenType::KW_WHILE)) {
         StmtPtr s = parseStatement();
         if (s) body.push_back(s);

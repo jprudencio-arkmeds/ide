@@ -13,13 +13,13 @@ enum class TokenType {
     RIGHT_BRACKET,  // ]
     LEFT_PAREN,     // (
     RIGHT_PAREN,    // )
+    LEFT_BRACE,     // {
+    RIGHT_BRACE,    // }
     SEPARATOR,      // ,
     END_LINE,       // ;
 
     KW_IF,
-    KW_THEN,
     KW_ELSE,
-    KW_END,
     KW_INT,
     KW_FLOAT,
     KW_CHAR,
