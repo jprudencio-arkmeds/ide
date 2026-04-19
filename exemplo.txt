@@ -20,7 +20,7 @@ int potencia(int base, int exp) {
 int maximo(int a, int b) {
     if (a > b) {
         return a;
-    else
+    } else {
         return b;
     }
 }
@@ -95,12 +95,10 @@ write(~a);
 
 if (a > 100) {
     write("grande");
-else
-    if (a > 50) {
-        write("medio");
-    else
-        write("pequeno");
-    }
+} else if (a > 50) {
+    write("medio");
+} else {
+    write("pequeno");
 }
 
 int contador;

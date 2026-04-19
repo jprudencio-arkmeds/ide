@@ -14,76 +14,278 @@ d:[0-9]
 l:[a-zA-Z]
 w:[\ \t\n\s\r]
 #Tokens
-//aritmeticos
-"+"
-"-"
-"*"
-"/"
-"%"
-//relacional
-">"
-"<"
-">="
-"<="
-"="
-"!="
-//logicos
-"&&"
-"||"
-"!"
-// bitwise
-"~"
-">>"
-"<<"
-"^"
-"|"
-"&"
-// parenteses
-"("
-")"
+// IGNORAR ESPACOS E COMENTARIOS
+: [\ \t\n\r]+
+:! (/)(/).*
+:! /\*([^\*]|\*+[^/\*])*\*+/
 
-id : {l}({l}|{d}|"_")*
-num_int: {d}+
-num_real: {d}+\.{d}+
-: {w}+
+// DELIMITADORES E PONTUADORES
+KEY_LEFT_BRACKET: \[
+KEY_RIGHT_BRACKET: \]
+KEY_LEFT_PARENTHESIS: \(
+KEY_RIGHT_PARENTHESIS: \)
+KEY_LEFT_BRACE: \{
+KEY_RIGHT_BRACE: \}
+SEPARATOR: ,
+END_LINE: ;
+COLON: :
+QUESTION: \?
+KEY_DOT: \.
+KEY_ARROW: \->
+
+// RESERVED KEYWORDS (C Language)
+KEY_IF: if
+KEY_ELSE: else
+KEY_WHILE: while
+KEY_FOR: for
+KEY_DO: do
+KEY_SWITCH: switch
+KEY_CASE: case
+KEY_DEFAULT: default
+KEY_BREAK: break
+KEY_CONTINUE: continue
+KEY_RETURN: return
+KEY_GOTO: goto
+KEY_SIZEOF: sizeof
+KEY_TYPEDEF: typedef
+KEY_STRUCT: struct
+KEY_UNION: union
+KEY_ENUM: enum
+KEY_CONST: const
+KEY_STATIC: static
+KEY_EXTERN: extern
+KEY_REGISTER: register
+KEY_VOLATILE: volatile
+KEY_AUTO: auto
+KEY_SIGNED: signed
+KEY_UNSIGNED: unsigned
+KEY_SHORT: short
+KEY_LONG: long
+KEY_INT: int
+KEY_FLOAT: float
+KEY_DOUBLE: double
+KEY_CHAR: char
+KEY_VOID: void
+KEY_STRING: string
+
+// OPERADORES ARITMETICOS
+KEY_INCREMENT: \+\+
+KEY_DECREMENT: \-\-
+KEY_PLUS: \+
+KEY_MINUS: \-
+KEY_MULTIPLY: \*
+KEY_DIVIDE: /
+KEY_MOD: %
+KEY_ASSIGN: =
+KEY_PLUS_ASSIGN: \+=
+KEY_MINUS_ASSIGN: \-=
+KEY_MULTIPLY_ASSIGN: \*=
+KEY_DIVIDE_ASSIGN: /=
+KEY_MOD_ASSIGN: %=
+KEY_AND_ASSIGN: &=
+KEY_OR_ASSIGN: \|=
+KEY_XOR_ASSIGN: \^=
+KEY_SHIFT_LEFT_ASSIGN: <<=
+KEY_SHIFT_RIGHT_ASSIGN: >>=
+
+// OPERADORES RELACIONAIS
+KEY_GREATER_EQUAL: >=
+KEY_LESS_EQUAL: <=
+KEY_EQUAL: ==
+KEY_NOT_EQUAL: !=
+KEY_GREATER: >
+KEY_LESS: <
+
+// OPERADORES LOGICOS
+KEY_AND: &&
+KEY_OR: \|\|
+KEY_NOT: !
+
+// OPERADORES BIT A BIT
+KEY_SHIFT_RIGHT: >>
+KEY_SHIFT_LEFT: <<
+KEY_BIT_AND: &
+KEY_BIT_OR: \|
+KEY_BIT_XOR: \^
+KEY_BIT_NOT: ~
+
+// LITERAIS
+INT: [0-9]+
+BINARY: 0b[01]+
+HEX: 0x[0-9a-fA-F]+
+REAL: [0-9]+\.[0-9]+
+CHAR: '[^']'
+STRING: \"[^\"]*\"
+
+// IDENTIFICADORES
+ID: [a-zA-Z_]+[a-zA-Z0-9_]*
+
 #NonTerminals
-<exp>
-<exp1>
-<exp2>
-<exp3>
-<exp4>
-<exp5>
-<exp6>
-<exp7>
-<exp8>
-<exp9>
-<exp10>
+<programa>
+<lista_elementos>
+<elemento>
+<declaracao>
+<declaracao_variavel>
+<declaracao_funcao>
+<tipo>
+<opt_modificadores>
+<modificadores>
+<modificador>
+<tipo_base>
+<opt_ponteiro>
+<ponteiro>
+<opt_lista_parametros>
+<lista_parametros>
+<parametro>
+<bloco>
+<lista_comandos>
+<comando>
+<comando_if>
+<comando_while>
+<comando_for>
+<comando_do_while>
+<comando_switch>
+<lista_cases>
+<case_item>
+<comando_return>
+<comando_break>
+<comando_continue>
+<comando_expressao>
+<op_expressao>
+<expressao>
+<expressao_atrib>
+<op_atrib>
+<expressao_ternaria>
+<expressao_or>
+<expressao_and>
+<expressao_bit_or>
+<expressao_bit_xor>
+<expressao_bit_and>
+<expressao_igual>
+<op_igual>
+<expressao_rel>
 <op_rel>
-<op_neg>
-<op_bitwise>
-<op_arit_baixa>
-<op_arit_alta>
-<op_arit_mais_alta>
-
+<expressao_shift>
+<op_shift>
+<expressao_adit>
+<op_adit>
+<expressao_mult>
+<op_mult>
+<expressao_unaria>
+<op_unario>
+<expressao_posfix>
+<expressao_primaria>
+<opt_lista_argumentos>
+<lista_argumentos>
+<literal>
 #Grammar
-<exp>  ::= <exp> "||" <exp1> | <exp1>;
-<exp1> ::= <exp1> "&&" <exp2> | <exp2>;
-<exp2> ::= <exp2> "|" <exp3> | <exp3>;
-<exp3> ::= <exp3> "^" <exp4> | <exp4>;
-<exp4> ::= <exp4> "&" <exp5> | <exp5>;
-<exp5> ::= <exp5> <op_rel> <exp6> | <exp6>;
-<exp6> ::= <exp6> <op_bitwise> <exp7> | <exp7>;
-<exp7> ::= <exp7> <op_arit_baixa> <exp8> | <exp8>;
-<exp8> ::= <exp8> <op_arit_alta> <exp9> | <exp9> ;
-<exp9> ::= <op_neg> <exp10> | <exp10>;
-<exp10> ::= num_int | num_real | id | "(" <exp> ")";
 
-<op_rel> ::= ">" | "<" | ">=" | "<=" | "==" | "!=";
-<op_neg> ::= "-" | "~" | "!";
-<op_bitwise> ::= "<<" | ">>";
-<op_arit_baixa> ::= "+" | "-";
-<op_arit_alta> ::= "*" | "/" | "%";
+// PROGRAMA
+<programa> ::= <lista_elementos>;
+<lista_elementos> ::= <lista_elementos> <elemento> | <elemento>;
+<elemento> ::= <declaracao> | <comando>;
 
-// Exemplo completo para o simulador GALS (copie a linha abaixo para a entrada da expressao).
-// Na IDE Compilador, igualdade e sempre "==" (alinhado com <op_rel> acima).
-// -x + 8.8 - !x * 2 / ~y % 3 << 7 != y >> 3 || (x <= 3 && y > 8) | p & (h ^ g)
+// DECLARACOES
+<declaracao> ::= <declaracao_variavel> | <declaracao_funcao>;
+<declaracao_variavel> ::= <tipo> ID END_LINE | <tipo> ID KEY_ASSIGN <expressao> END_LINE | <tipo> ID KEY_LEFT_BRACKET <expressao> KEY_RIGHT_BRACKET END_LINE | <tipo> ID KEY_LEFT_BRACKET KEY_RIGHT_BRACKET END_LINE;
+<declaracao_funcao> ::= <tipo> ID KEY_LEFT_PARENTHESIS <opt_lista_parametros> KEY_RIGHT_PARENTHESIS <bloco>;
+
+// TIPOS
+<tipo> ::= <opt_modificadores> <tipo_base> <opt_ponteiro>;
+<opt_modificadores> ::= <modificadores> | î;
+<modificadores> ::= <modificadores> <modificador> | <modificador>;
+<modificador> ::= KEY_CONST | KEY_STATIC | KEY_EXTERN | KEY_REGISTER | KEY_VOLATILE | KEY_AUTO | KEY_SIGNED | KEY_UNSIGNED | KEY_SHORT | KEY_LONG;
+<tipo_base> ::= KEY_INT | KEY_FLOAT | KEY_DOUBLE | KEY_CHAR | KEY_VOID | KEY_STRING;
+<opt_ponteiro> ::= <ponteiro> | î;
+<ponteiro> ::= KEY_MULTIPLY <ponteiro> | KEY_MULTIPLY;
+
+// PARAMETROS
+<opt_lista_parametros> ::= <lista_parametros> | î;
+<lista_parametros> ::= <lista_parametros> SEPARATOR <parametro> | <parametro>;
+<parametro> ::= <tipo> ID | <tipo> ID KEY_LEFT_BRACKET KEY_RIGHT_BRACKET;
+
+// BLOCO E COMANDOS
+<bloco> ::= KEY_LEFT_BRACE <lista_comandos> KEY_RIGHT_BRACE | KEY_LEFT_BRACE KEY_RIGHT_BRACE;
+<lista_comandos> ::= <lista_comandos> <comando> | <comando>;
+
+<comando> ::= <comando_if>
+            | <comando_while>
+            | <comando_for>
+            | <comando_do_while>
+            | <comando_switch>
+            | <comando_return>
+            | <comando_break>
+            | <comando_continue>
+            | <comando_expressao>
+            | <declaracao_variavel>
+            | <bloco>;
+
+// ESTRUTURAS DE CONTROLE
+<comando_if> ::= KEY_IF KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS <comando> | KEY_IF KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS <comando> KEY_ELSE <comando>;
+<comando_while> ::= KEY_WHILE KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS <comando>;
+<comando_for> ::= KEY_FOR KEY_LEFT_PARENTHESIS <op_expressao> END_LINE <op_expressao> END_LINE <op_expressao> KEY_RIGHT_PARENTHESIS <comando>;
+<comando_do_while> ::= KEY_DO <comando> KEY_WHILE KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS END_LINE;
+<comando_switch> ::= KEY_SWITCH KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS KEY_LEFT_BRACE <lista_cases> KEY_RIGHT_BRACE;
+<lista_cases> ::= <lista_cases> <case_item> | <case_item>;
+<case_item> ::= KEY_CASE <literal> COLON <lista_comandos> | KEY_DEFAULT COLON <lista_comandos>;
+
+// COMANDOS SIMPLES
+<comando_return> ::= KEY_RETURN <expressao> END_LINE | KEY_RETURN END_LINE;
+<comando_break> ::= KEY_BREAK END_LINE;
+<comando_continue> ::= KEY_CONTINUE END_LINE;
+<comando_expressao> ::= <expressao> END_LINE | END_LINE;
+<op_expressao> ::= <expressao> | î;
+
+// EXPRESSOES (precedencia crescente de baixo para cima)
+<expressao> ::= <expressao_atrib>;
+
+<expressao_atrib> ::= <expressao_unaria> <op_atrib> <expressao_atrib> | <expressao_ternaria>;
+<op_atrib> ::= KEY_ASSIGN | KEY_PLUS_ASSIGN | KEY_MINUS_ASSIGN | KEY_MULTIPLY_ASSIGN | KEY_DIVIDE_ASSIGN | KEY_MOD_ASSIGN | KEY_AND_ASSIGN | KEY_OR_ASSIGN | KEY_XOR_ASSIGN | KEY_SHIFT_LEFT_ASSIGN | KEY_SHIFT_RIGHT_ASSIGN;
+
+<expressao_ternaria> ::= <expressao_or> QUESTION <expressao> COLON <expressao_ternaria> | <expressao_or>;
+
+<expressao_or> ::= <expressao_or> KEY_OR <expressao_and> | <expressao_and>;
+<expressao_and> ::= <expressao_and> KEY_AND <expressao_bit_or> | <expressao_bit_or>;
+<expressao_bit_or> ::= <expressao_bit_or> KEY_BIT_OR <expressao_bit_xor> | <expressao_bit_xor>;
+<expressao_bit_xor> ::= <expressao_bit_xor> KEY_BIT_XOR <expressao_bit_and> | <expressao_bit_and>;
+<expressao_bit_and> ::= <expressao_bit_and> KEY_BIT_AND <expressao_igual> | <expressao_igual>;
+
+<expressao_igual> ::= <expressao_igual> <op_igual> <expressao_rel> | <expressao_rel>;
+<op_igual> ::= KEY_EQUAL | KEY_NOT_EQUAL;
+
+<expressao_rel> ::= <expressao_rel> <op_rel> <expressao_shift> | <expressao_shift>;
+<op_rel> ::= KEY_GREATER | KEY_LESS | KEY_GREATER_EQUAL | KEY_LESS_EQUAL;
+
+<expressao_shift> ::= <expressao_shift> <op_shift> <expressao_adit> | <expressao_adit>;
+<op_shift> ::= KEY_SHIFT_LEFT | KEY_SHIFT_RIGHT;
+
+<expressao_adit> ::= <expressao_adit> <op_adit> <expressao_mult> | <expressao_mult>;
+<op_adit> ::= KEY_PLUS | KEY_MINUS;
+
+<expressao_mult> ::= <expressao_mult> <op_mult> <expressao_unaria> | <expressao_unaria>;
+<op_mult> ::= KEY_MULTIPLY | KEY_DIVIDE | KEY_MOD;
+
+<expressao_unaria> ::= <op_unario> <expressao_unaria> 
+                     | KEY_INCREMENT <expressao_unaria> 
+                     | KEY_DECREMENT <expressao_unaria>
+                     | KEY_SIZEOF KEY_LEFT_PARENTHESIS <tipo> KEY_RIGHT_PARENTHESIS
+                     | KEY_SIZEOF <expressao_unaria>
+                     | <expressao_posfix>;
+<op_unario> ::= KEY_MINUS | KEY_PLUS | KEY_NOT | KEY_BIT_NOT | KEY_MULTIPLY | KEY_BIT_AND;
+
+<expressao_posfix> ::= <expressao_posfix> KEY_LEFT_BRACKET <expressao> KEY_RIGHT_BRACKET
+                     | <expressao_posfix> KEY_LEFT_PARENTHESIS <opt_lista_argumentos> KEY_RIGHT_PARENTHESIS
+                     | <expressao_posfix> KEY_DOT ID
+                     | <expressao_posfix> KEY_ARROW ID
+                     | <expressao_posfix> KEY_INCREMENT
+                     | <expressao_posfix> KEY_DECREMENT
+                     | <expressao_primaria>;
+
+<expressao_primaria> ::= ID | <literal> | KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS;
+
+// ARGUMENTOS
+<opt_lista_argumentos> ::= <lista_argumentos> | î;
+<lista_argumentos> ::= <lista_argumentos> SEPARATOR <expressao> | <expressao>;
+
+// LITERAIS
+<literal> ::= INT | REAL | HEX | BINARY | CHAR | STRING;
