@@ -2,12 +2,12 @@
 build/
 out/
 cmake-build-*/
+bin/
 
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
 CMakeLists.txt.user
 
 # Visual Studio
