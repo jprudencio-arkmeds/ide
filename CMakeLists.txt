@@ -12,12 +12,10 @@ file(GLOB SOURCES
     src/main.cpp
     src/ide/*.cpp
     src/gals/*.cpp
-    src/interpreter/*.cpp
 )
 file(GLOB HEADERS
     src/ide/*.h
     src/gals/*.h
-    src/interpreter/*.h
 )
 
 add_executable(compilador ${SOURCES} ${HEADERS})
