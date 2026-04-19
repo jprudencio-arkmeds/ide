@@ -8,7 +8,6 @@
 #include <memory>
 #include "CodeEditor.h"
 #include "gals/Token.h"
-#include "gals/AST.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT

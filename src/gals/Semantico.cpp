@@ -3,8 +3,9 @@
 
 #include <iostream>
 
-void Semantico::executeAction(int /*action*/, const Token* /*token*/)
+void Semantico::executeAction(int action, const Token *token)
 {
-    // Stub — semantic actions are handled directly in Sintatico.
+    std::cout << "Ação: " << action << ", Token: "  << token->getId() 
+              << ", Lexema: " << token->getLexeme() << std::endl;
 }
 

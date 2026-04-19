@@ -2,7 +2,8 @@
 #include "gals/Lexico.h"
 #include "gals/Sintatico.h"
 #include "gals/Semantico.h"
-#include "interpreter/Interpreter.h"
+#include "gals/LexicalError.h"
+#include "gals/SyntacticError.h"
 
 #include <QSplitter>
 #include <QMenuBar>
@@ -21,6 +22,22 @@
 #include <QLabel>
 
 // ── helpers ────────────────────────────────────────────────────────────────
+
+static void posToLineCol(const QString& src, int pos, int &line, int &col) {
+    line = 1; col = 1;
+    for (int i = 0; i < pos && i < src.size(); ++i) {
+        if (src[i] == '\n') { ++line; col = 1; }
+        else ++col;
+    }
+}
+
+static QString tokenIdName(TokenId id) {
+    switch (id) {
+        case EPSILON: return "EPSILON";
+        case DOLLAR:  return "$";
+        default:      return QString("t_%1").arg((int)id);
+    }
+}
 
 static QFont panelFont() {
     QFont f;
@@ -216,30 +233,43 @@ void MainWindow::compile() {
     // ── Lexical Analysis ──────────────────────────────────────────────────
     appendMessage(m_compilePanel, "=== Lexical Analysis ===");
 
-    Lexico lexico(source);
-    const std::vector<Token> tokens = lexico.tokenize();
+    std::string srcStd = source.toStdString();
+    Lexico lexico(srcStd.c_str());
+    std::vector<Token> tokens;
+    int lexErrors = 0;
 
-    int unknowns = 0;
-    for (const Token& t : tokens)
-        if (t.type == TokenType::UNKNOWN) {
-            appendMessage(m_compilePanel,
-                QString("  [ERROR] Line %1, Col %2: Unknown token '%3'")
-                    .arg(t.line).arg(t.col).arg(t.value), MSG_ERROR);
-            ++unknowns;
+    try {
+        while (true) {
+            Token* t = lexico.nextToken();
+            if (t == nullptr || t->getId() == DOLLAR) {
+                if (t) tokens.push_back(*t);
+                delete t;
+                break;
+            }
+            tokens.push_back(*t);
+            delete t;
         }
-
-    if (unknowns == 0)
+    } catch (LexicalError& e) {
+        int line, col;
+        posToLineCol(source, e.getPosition(), line, col);
         appendMessage(m_compilePanel,
-            QString("  %1 token(s) recognized — no lexical errors.")
-                .arg((int)tokens.size() - 1), MSG_SUCCESS);
+            QString("  [ERROR] Line %1, Col %2: %3")
+                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
+        ++lexErrors;
+    }
+
+    if (lexErrors == 0)
+        appendMessage(m_compilePanel,
+            QString("  %1 token(s) recognized \u2014 no lexical errors.")
+                .arg((int)tokens.size()), MSG_SUCCESS);
     else
         appendMessage(m_compilePanel,
-            QString("  %1 lexical error(s) found.").arg(unknowns), MSG_ERROR);
+            QString("  %1 lexical error(s) found.").arg(lexErrors), MSG_ERROR);
 
     showTokens(tokens);
 
-    if (unknowns > 0) {
-        m_statusLabel->setText(QString("Lexical errors: %1").arg(unknowns));
+    if (lexErrors > 0) {
+        m_statusLabel->setText(QString("Lexical errors: %1").arg(lexErrors));
         m_tabs->setCurrentIndex(0);
         return;
     }
@@ -248,41 +278,49 @@ void MainWindow::compile() {
     appendMessage(m_compilePanel, "");
     appendMessage(m_compilePanel, "=== Syntactic Analysis ===");
 
-    Lexico   lexico2(source);
-    Semantico semantico;
-    Sintatico sintatico;
-    sintatico.parse(&lexico2, &semantico);
-
-    if (sintatico.hasErrors()) {
-        for (const ParseError& e : sintatico.errors())
-            appendMessage(m_compilePanel,
-                QString("  [ERROR] Line %1, Col %2: %3")
-                    .arg(e.line).arg(e.col).arg(e.message), MSG_ERROR);
+    try {
+        Lexico   lexico2(srcStd.c_str());
+        Semantico semantico;
+        Sintatico sintatico;
+        sintatico.parse(&lexico2, &semantico);
+        appendMessage(m_compilePanel, "  Program parsed successfully.", MSG_SUCCESS);
+    } catch (SyntacticError& e) {
+        int line, col;
+        posToLineCol(source, e.getPosition(), line, col);
         appendMessage(m_compilePanel,
-            QString("\n  %1 syntax error(s) found.")
-                .arg(sintatico.errors().size()), MSG_ERROR);
-        m_statusLabel->setText(
-            QString("Compilation failed: %1 error(s)").arg(sintatico.errors().size()));
+            QString("  [ERROR] Line %1, Col %2: %3")
+                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
+        appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
+        m_statusLabel->setText("Compilation failed: 1 error(s)");
+        m_tabs->setCurrentIndex(0);
+        return;
+    } catch (LexicalError& e) {
+        int line, col;
+        posToLineCol(source, e.getPosition(), line, col);
+        appendMessage(m_compilePanel,
+            QString("  [ERROR] Line %1, Col %2: %3")
+                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
         m_tabs->setCurrentIndex(0);
         return;
     }
-
-    appendMessage(m_compilePanel, "  Program parsed successfully.", MSG_SUCCESS);
 }
 
 void MainWindow::showTokens(const std::vector<Token>& tokens) {
     m_tokenPanel->clear();
+    const QString source = m_editor->toPlainText();
     QString out;
-    out += QString(" %1  %2  %3s  %4\n").arg("Line", 4).arg("Col", 3).arg("Type").arg("Value");
+    out += QString(" %1  %2  %3  %4\n").arg("Line", 4).arg("Col", 3).arg("Type", -20).arg("Value");
     out += QString(60, '-') + "\n";
 
     for (const Token& t : tokens) {
-        if (t.type == TokenType::END_OF_FILE) continue;
+        if (t.getId() == DOLLAR) continue;
+        int line, col;
+        posToLineCol(source, t.getPosition(), line, col);
         out += QString(" %1  %2  %3  %4\n")
-            .arg(t.line, 4)
-            .arg(t.col,  3)
-            .arg(tokenTypeName(t.type), -20)
-            .arg(t.value);
+            .arg(line, 4)
+            .arg(col,  3)
+            .arg(tokenIdName(t.getId()), -20)
+            .arg(QString::fromStdString(t.getLexeme()));
     }
     m_tokenPanel->setPlainText(out);
 }
