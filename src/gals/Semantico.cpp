@@ -1,77 +1,110 @@
 #include "Semantico.h"
 #include "Constants.h"
 
-void Semantico::reset() {
-    m_table.reset();
-    m_errors.clear();
-    m_pendingType.clear();
+static bool isTypeBase(TokenId id) {
+    return id == t_KEY_INT    || id == t_KEY_FLOAT  || id == t_KEY_DOUBLE ||
+           id == t_KEY_CHAR   || id == t_KEY_VOID   || id == t_KEY_STRING;
 }
 
-void Semantico::executeAction(int action, const Token* token) {
-    switch (action) {
+static bool isModifier(TokenId id) {
+    return id == t_KEY_CONST    || id == t_KEY_STATIC   || id == t_KEY_EXTERN  ||
+           id == t_KEY_REGISTER || id == t_KEY_VOLATILE  || id == t_KEY_AUTO   ||
+           id == t_KEY_SIGNED   || id == t_KEY_UNSIGNED  || id == t_KEY_SHORT  ||
+           id == t_KEY_LONG;
+}
 
-        // Registra o tipo da declaração em andamento.
-        // Ativado ao reconhecer uma palavra-chave de tipo (int, float, …).
-        case SA_SET_TYPE:
-            m_pendingType = token ? token->getLexeme() : "";
-            break;
 
-        // Declara variável no escopo corrente com o tipo acumulado.
-        // Ativado ao reconhecer o ID após um tipo em declaracao_variavel.
-        case SA_DECLARE_VAR:
-            if (token) {
-                const std::string& name = token->getLexeme();
-                if (!m_table.addSymbol(name, m_pendingType, token->getPosition())) {
-                    m_errors.emplace_back(
-                        "Variável '" + name + "' já declarada neste escopo.",
-                        token->getPosition()
-                    );
-                }
-                m_pendingType.clear();
-            }
-            break;
+void Semantico::executeAction(int /*action*/, const Token* /*token*/) {
+}
 
-        // Declara função no escopo corrente (sempre no escopo global na prática).
-        // Ativado ao reconhecer o ID em declaracao_funcao.
-        case SA_DECLARE_FUN:
-            if (token) {
-                const std::string& name = token->getLexeme();
-                std::string funType = "fun:" + m_pendingType;
-                if (!m_table.addSymbol(name, funType, token->getPosition())) {
-                    m_errors.emplace_back(
-                        "Função '" + name + "' já declarada neste escopo.",
-                        token->getPosition()
-                    );
-                }
-                m_pendingType.clear();
-            }
-            break;
+void Semantico::analyze(const std::vector<Token>& tokens) {
+    enum State { IDLE, IN_TYPE };
 
-        // Abre novo escopo — ativado ao reconhecer '{'.
-        case SA_ENTER_SCOPE:
-            m_table.enterScope();
-            break;
+    State       state         = IDLE;
+    std::string pendingType;
+    TokenId     prevId        = EPSILON;
+    bool        skipNextBrace = false;
 
-        // Fecha escopo corrente — ativado ao reconhecer '}'.
-        case SA_EXIT_SCOPE:
-            m_table.exitScope();
-            break;
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const Token& tok = tokens[i];
+        TokenId      id  = tok.getId();
 
-        // Verifica uso de variável em expressão.
-        // Ativado ao reconhecer ID em expressao_primaria.
-        case SA_USE_VAR:
-            if (token) {
-                const std::string& name = token->getLexeme();
-                if (!m_table.lookupSymbol(name)) {
-                    m_errors.emplace_back(
-                        "Variável '" + name + "' não declarada.",
-                        token->getPosition()
-                    );
+        if (id == DOLLAR) break;
+
+        switch (state) {
+
+        case IDLE:
+            if (isModifier(id) || isTypeBase(id)) {
+                pendingType = tok.getLexeme();
+                state = IN_TYPE;
+
+            } else if (id == t_KEY_LEFT_BRACE) {
+                if (skipNextBrace)
+                    skipNextBrace = false;
+                else
+                    m_table.enterScope();
+
+            } else if (id == t_KEY_RIGHT_BRACE) {
+                m_table.exitScope();
+
+            } else if (id == t_ID) {
+                // Acesso a membro (obj.campo / obj->campo) não é uso de variável.
+                if (prevId != t_KEY_DOT && prevId != t_KEY_ARROW) {
+                    if (!m_table.lookupSymbol(tok.getLexeme())) {
+                        m_errors.emplace_back(
+                            "Variável '" + tok.getLexeme() + "' não declarada.",
+                            tok.getPosition());
+                    }
                 }
             }
             break;
 
-        default:
+        case IN_TYPE:
+            if (isModifier(id) || isTypeBase(id)) {
+                pendingType += " " + tok.getLexeme();
+            } else if (id == t_KEY_MULTIPLY) {
+                pendingType += "*";
+            } else if (id == t_ID) {
+                bool isFunction = (i + 1 < tokens.size() &&
+                                   tokens[i + 1].getId() == t_KEY_LEFT_PARENTHESIS);
+
+                std::string symType = isFunction ? ("fun:" + pendingType) : pendingType;
+
+                if (!m_table.addSymbol(tok.getLexeme(), symType, tok.getPosition())) {
+                    std::string kind = isFunction ? "Função" : "Variável";
+                    m_errors.emplace_back(
+                        kind + " '" + tok.getLexeme() + "' já declarada neste escopo.",
+                        tok.getPosition());
+                }
+
+                if (isFunction) {
+                    m_table.enterScope();
+                    skipNextBrace = true;
+                }
+
+                pendingType.clear();
+                state = IDLE;
+
+            } else if (id == t_KEY_LEFT_BRACE) {
+                if (skipNextBrace)
+                    skipNextBrace = false;
+                else
+                    m_table.enterScope();
+                pendingType.clear();
+                state = IDLE;
+
+            } else if (id == t_KEY_RIGHT_BRACE) {
+                m_table.exitScope();
+                pendingType.clear();
+                state = IDLE;
+
+            } else {
+                pendingType.clear();
+                state = IDLE;
+            }
             break;
+        }
+
+        prevId = id;
     }
 }

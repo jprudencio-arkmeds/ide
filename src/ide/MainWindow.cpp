@@ -288,6 +288,7 @@ void MainWindow::compile() {
         // ── Semantic Analysis ─────────────────────────────────────────────
         appendMessage(m_compilePanel, "");
         appendMessage(m_compilePanel, "=== Semantic Analysis ===");
+        semantico.analyze(tokens);
         const auto& semErrors = semantico.errors();
         if (semErrors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);

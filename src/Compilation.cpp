@@ -9,32 +9,30 @@
 #include <iterator>
 
 namespace {
+    void posToLineCol(const std::string& src, int pos, int &line, int &col) {
+        line = 1;
+        col = 1;
 
-void posToLineCol(const std::string& src, int pos, int &line, int &col) {
-    line = 1;
-    col = 1;
+        if (pos < 0) {
+            return;
+        }
 
-    if (pos < 0) {
-        return;
-    }
-
-    for (int i = 0; i < pos && i < static_cast<int>(src.size()); ++i) {
-        if (src[i] == '\n') {
-            ++line;
-            col = 1;
-        } else {
-            ++col;
+        for (int i = 0; i < pos && i < static_cast<int>(src.size()); ++i) {
+            if (src[i] == '\n') {
+                ++line;
+                col = 1;
+            } else {
+                ++col;
+            }
         }
     }
-}
 
-std::string formatError(const std::string& message, int position, const std::string& source) {
-    int line, col;
-    posToLineCol(source, position, line, col);
-    return "[ERROR] Line " + std::to_string(line) + ", Col " + std::to_string(col) + ": " + message;
+    std::string formatError(const std::string& where, const std::string& message, int position, const std::string& source) {
+        int line, col;
+        posToLineCol(source, position, line, col);
+        return "[ERROR " + where + "] Line " + std::to_string(line) + ", Col " + std::to_string(col) + ": " + message;
+    }
 }
-
-} // namespace
 
 CompileResult compileSource(const std::string& source) {
     CompileResult result;
@@ -45,34 +43,41 @@ CompileResult compileSource(const std::string& source) {
     }
 
     try {
+        std::vector<Token> tokens;
         Lexico lexico(source.c_str());
         while (true) {
-            Token* token = lexico.nextToken();
-            if (token == nullptr || token->getId() == DOLLAR) {
-                delete token;
+            Token* t = lexico.nextToken();
+            if (t == nullptr || t->getId() == DOLLAR) {
+                if (t) tokens.push_back(*t);
+                delete t;
                 break;
             }
-            delete token;
+            tokens.push_back(*t);
+            delete t;
         }
-    } catch (const LexicalError& e) {
-        result.success = false;
-        result.messages.push_back({CompileMessageKind::Error, formatError(e.getMessage(), e.getPosition(), source)});
-        return result;
-    }
 
-    try {
-        Lexico lexico(source.c_str());
+        Lexico lexico2(source.c_str());
         Semantico semantico;
         Sintatico sintatico;
-        sintatico.parse(&lexico, &semantico);
+        sintatico.parse(&lexico2, &semantico);
         result.success = true;
         result.messages.push_back({CompileMessageKind::Success, "Program parsed successfully."});
+
+        semantico.analyze(tokens);
+        for (const auto& e : semantico.errors()) {
+            result.success = false;
+            result.messages.push_back({CompileMessageKind::Error,
+                formatError("SEMANTIC", e.getMessage(), e.getPosition(), source)});
+        }
     } catch (const SyntacticError& e) {
         result.success = false;
-        result.messages.push_back({CompileMessageKind::Error, formatError(e.getMessage(), e.getPosition(), source)});
+        result.messages.push_back({CompileMessageKind::Error, formatError("SYNTAX", e.getMessage(), e.getPosition(), source)});
     } catch (const LexicalError& e) {
         result.success = false;
-        result.messages.push_back({CompileMessageKind::Error, formatError(e.getMessage(), e.getPosition(), source)});
+        result.messages.push_back({CompileMessageKind::Error, formatError("LEXICAL", e.getMessage(), e.getPosition(), source)});
+    } catch (const SemanticError& e) {
+        result.success = false;
+        result.messages.push_back({CompileMessageKind::Error, formatError("SEMANTIC", e.getMessage(), e.getPosition(), source)});
     }
 
     return result;
