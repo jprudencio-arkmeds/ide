@@ -44,7 +44,7 @@ example/                  # Example C programs
 ### Build Steps
 
 ```bash
-make build        # Build solution
+make configure    # Build solution
 make debug        # Build + Debug executable
 make release      # Build + Release executable
 ```

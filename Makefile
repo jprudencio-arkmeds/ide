@@ -1,17 +1,20 @@
-BUILD_DIR = ./build
-BIN_DIR = ./bin
+BUILD_DIR = build
+BIN_DIR = bin
 
-build: | $(BUILD_DIR)
+.PHONY: configure debug release
+
+configure: $(BUILD_DIR)
 	cmake -S . -B $(BUILD_DIR)
 
-debug: build | $(BIN_DIR)
+debug: configure | $(BIN_DIR)
 	cmake --build $(BUILD_DIR) --config Debug
 
-release: build | $(BIN_DIR)
+release: configure | $(BIN_DIR)
 	cmake --build $(BUILD_DIR) --config Release
 
 $(BUILD_DIR):
-	$(call MKDIR,$(BUILD_DIR))
+	mkdir -p $(BUILD_DIR)
 
 $(BIN_DIR):
-	$(call MKDIR,$(BIN_DIR))
+	mkdir -p $(BIN_DIR)
+	
