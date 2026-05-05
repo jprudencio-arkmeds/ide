@@ -39,7 +39,7 @@ example/                  # Example C programs
 
 - C++17 compatible compiler (MSVC, GCC, or Clang)
 - CMake 3.16+
-- Qt 5 or 6
+- Qt 5 or 6 (required only for the GUI version)
 
 ### Build Steps
 
@@ -51,12 +51,35 @@ make release      # Build + Release executable
 
 The compiled binary will be located at `bin/[Debug|Release]/compilador.exe`.
 
+### CLI-only build
+
+To build the CLI-only compiler without Qt:
+
+```bash
+cmake -S . -B build -DCLI_ONLY=ON
+cmake --build build --config Release
+```
+
+The resulting executable is available at `bin/compilador`.
+
 ## Usage
+
+### GUI mode
 
 1. Run `compilador.exe`
 2. Write or open a C source file in the editor
 3. Use the IDE controls to run lexical and syntactic analysis
 4. View errors and tokens in the output panel
+
+### CLI mode
+
+Run the compiler with the source file path:
+
+```bash
+./bin/compilador path/do/arquivo.c
+```
+
+This mode performs lexical, syntactic, and semantic analysis and prints success or error messages to the terminal.
 
 ## Examples
 
