@@ -279,11 +279,29 @@ void MainWindow::compile() {
     appendMessage(m_compilePanel, "=== Syntactic Analysis ===");
 
     try {
-        Lexico   lexico2(srcStd.c_str());
+        Lexico    lexico2(srcStd.c_str());
         Semantico semantico;
         Sintatico sintatico;
         sintatico.parse(&lexico2, &semantico);
         appendMessage(m_compilePanel, "  Program parsed successfully.", MSG_SUCCESS);
+
+        // ── Semantic Analysis ─────────────────────────────────────────────
+        appendMessage(m_compilePanel, "");
+        appendMessage(m_compilePanel, "=== Semantic Analysis ===");
+        const auto& semErrors = semantico.errors();
+        if (semErrors.empty()) {
+            appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
+        } else {
+            for (const auto& e : semErrors) {
+                int line, col;
+                posToLineCol(source, e.getPosition(), line, col);
+                appendMessage(m_compilePanel,
+                    QString("  [ERROR] Line %1, Col %2: %3")
+                        .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
+            }
+            appendMessage(m_compilePanel,
+                QString("  %1 semantic error(s) found.").arg((int)semErrors.size()), MSG_ERROR);
+        }
     } catch (SyntacticError& e) {
         int line, col;
         posToLineCol(source, e.getPosition(), line, col);
