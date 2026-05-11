@@ -145,13 +145,12 @@ void MainWindow::setupUI() {
 
 void MainWindow::setupMenus() {
     QMenu* file = menuBar()->addMenu("&File");
-    file->addAction("&New",        this, &MainWindow::newFile,    QKeySequence::New);
-    file->addAction("&Open...",    this, &MainWindow::openFile,   QKeySequence::Open);
+    file->addAction("&New", QKeySequence::New, this, &MainWindow::newFile);
+    file->addAction("&Open", QKeySequence::Open, this, &MainWindow::openFile);
+    file->addAction("&Save", QKeySequence::Save, this, &MainWindow::saveFile);
+    file->addAction("Save &As...", QKeySequence::SaveAs, this, &MainWindow::saveFileAs);
     file->addSeparator();
-    file->addAction("&Save",       this, &MainWindow::saveFile,   QKeySequence::Save);
-    file->addAction("Save &As...", this, &MainWindow::saveFileAs, QKeySequence::SaveAs);
-    file->addSeparator();
-    file->addAction("E&xit",       this, &QWidget::close,         QKeySequence::Quit);
+    file->addAction("E&xit", QKeySequence::Quit, this, &QWidget::close);
 
     menuBar()->addAction("&Compile (F5)", this, &MainWindow::compile)->setShortcut(QKeySequence(Qt::Key_F5));
 }
