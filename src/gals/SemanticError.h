@@ -2,10 +2,11 @@
 #define SEMANTIC_ERROR_H
 
 #include "AnalysisError.h"
+#include "GalsDef.h"
 
 #include <string>
 
-class SemanticError : public AnalysisError
+class _GALS_CLASS SemanticError : public AnalysisError
 {
 public:
 

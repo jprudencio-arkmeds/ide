@@ -1,28 +1,18 @@
-BUILD_DIR = build
 BIN_DIR = bin
 
 .PHONY: configure debug release
 
-configure: $(BUILD_DIR)
-	cmake -S . -B $(BUILD_DIR)
+configure:
+	cmake -S . -B build
 
-debug: configure | $(BIN_DIR)
-	cmake --build $(BUILD_DIR) --config Debug
+debug:
+	if not exist debug mkdir debug
+	cmake -S . -B debug
+	if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	cmake --build debug --config Debug
 
-release: configure | $(BIN_DIR)
-	cmake --build $(BUILD_DIR) --config Release
-
-cli_configure: $(BUILD_DIR)
-	cmake -S . -B $(BUILD_DIR) -DCLI_ONLY=ON
-
-cli_debug: cli_configure | $(BIN_DIR)
-	cmake --build $(BUILD_DIR) --config Debug
-
-cli_release: cli_configure | $(BIN_DIR)
-	cmake --build $(BUILD_DIR) --config Release
-
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-$(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+release:
+	if not exist release mkdir release
+	cmake -S . -B release
+	if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	cmake --build release --config Release

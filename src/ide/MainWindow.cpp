@@ -4,6 +4,7 @@
 #include "gals/Semantico.h"
 #include "gals/LexicalError.h"
 #include "gals/SyntacticError.h"
+#include "gals/SemanticError.h"
 
 #include <QSplitter>
 #include <QMenuBar>
@@ -152,9 +153,7 @@ void MainWindow::setupMenus() {
     file->addSeparator();
     file->addAction("E&xit",       this, &QWidget::close,         QKeySequence::Quit);
 
-    QMenu* run = menuBar()->addMenu("&Run");
-    run->addAction("&Compile + Run  (F5)", this, &MainWindow::compile,
-                   QKeySequence(Qt::Key_F5));
+    menuBar()->addAction("&Compile (F5)", this, &MainWindow::compile)->setShortcut(QKeySequence(Qt::Key_F5));
 }
 
 void MainWindow::setupStatusBar() {
@@ -252,9 +251,7 @@ void MainWindow::compile() {
     } catch (LexicalError& e) {
         int line, col;
         posToLineCol(source, e.getPosition(), line, col);
-        appendMessage(m_compilePanel,
-            QString("  [ERROR] Line %1, Col %2: %3")
-                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
+        appendError(line, col, e.getMessage());
         ++lexErrors;
     }
 
@@ -263,8 +260,7 @@ void MainWindow::compile() {
             QString("  %1 token(s) recognized \u2014 no lexical errors.")
                 .arg((int)tokens.size()), MSG_SUCCESS);
     else
-        appendMessage(m_compilePanel,
-            QString("  %1 lexical error(s) found.").arg(lexErrors), MSG_ERROR);
+        appendMessage(m_compilePanel, QString("  %1 lexical error(s) found.").arg(lexErrors), MSG_ERROR);
 
     showTokens(tokens);
 
@@ -292,35 +288,41 @@ void MainWindow::compile() {
         const auto& semErrors = semantico.errors();
         if (semErrors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
-        } else {
+        } 
+        else {
             for (const auto& e : semErrors) {
                 int line, col;
                 posToLineCol(source, e.getPosition(), line, col);
-                appendMessage(m_compilePanel,
-                    QString("  [ERROR] Line %1, Col %2: %3")
-                        .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
+                appendError(line, col, e.getMessage());
             }
             appendMessage(m_compilePanel,
                 QString("  %1 semantic error(s) found.").arg((int)semErrors.size()), MSG_ERROR);
         }
-    } catch (SyntacticError& e) {
-        int line, col;
-        posToLineCol(source, e.getPosition(), line, col);
-        appendMessage(m_compilePanel,
-            QString("  [ERROR] Line %1, Col %2: %3")
-                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
-        appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
-        m_statusLabel->setText("Compilation failed: 1 error(s)");
-        m_tabs->setCurrentIndex(0);
-        return;
-    } catch (LexicalError& e) {
-        int line, col;
-        posToLineCol(source, e.getPosition(), line, col);
-        appendMessage(m_compilePanel,
-            QString("  [ERROR] Line %1, Col %2: %3")
-                .arg(line).arg(col).arg(e.getMessage()), MSG_ERROR);
-        m_tabs->setCurrentIndex(0);
-        return;
+    }
+    catch (LexicalError& e) {
+      int line, col;
+      posToLineCol(source, e.getPosition(), line, col);
+      appendError(line, col, e.getMessage());
+      m_tabs->setCurrentIndex(0);
+      return;
+    }
+    catch (SyntacticError& e) {
+      int line, col;
+      posToLineCol(source, e.getPosition(), line, col);
+      appendError(line, col, e.getMessage());
+      appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
+      m_statusLabel->setText("Compilation failed: 1 error(s)");
+      m_tabs->setCurrentIndex(0);
+      return;
+    }
+    catch (SemanticError& e) {
+      int line, col;
+      posToLineCol(source, e.getPosition(), line, col);
+      appendError(line, col, e.getMessage());
+      appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
+      m_statusLabel->setText("Compilation failed: 1 error(s)");
+      m_tabs->setCurrentIndex(0);
+      return;
     }
 }
 
@@ -342,6 +344,11 @@ void MainWindow::showTokens(const std::vector<Token>& tokens) {
             .arg(QString::fromStdString(t.getLexeme()));
     }
     m_tokenPanel->setPlainText(out);
+}
+
+void MainWindow::appendError(const int line, const int col, const QString& message) {
+    appendMessage(m_compilePanel,
+        QString("  [ERROR] Line %1, Col %2: %3").arg(line).arg(col).arg(message), MSG_ERROR);
 }
 
 void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKind kind) {

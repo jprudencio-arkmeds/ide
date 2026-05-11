@@ -3,13 +3,16 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
+    std::string path;
     if (argc != 2) {
-        std::cerr << "Usage: compilador <source-file>\n";
-        return 1;
+      std::cout << "Insert path: ";
+      std::getline(std::cin, path);
+    }
+    else {
+        path = argv[1];
     }
 
-    const std::string path = argv[1];
-    CompileResult result = compileFile(path);
+    const CompileResult result = compileFile(path);
 
     for (const auto& message : result.messages) {
         std::cout << message.text << "\n";

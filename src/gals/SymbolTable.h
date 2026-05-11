@@ -1,18 +1,20 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
+#include "GalsDef.h"
+
 #include <optional>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-struct Symbol {
+struct _GALS_CLASS Symbol {
     std::string type;
     int         position; // offset no código-fonte
 };
 
-class SymbolTable {
+class _GALS_CLASS SymbolTable {
 public:
     SymbolTable() {
         enterScope(); // escopo global

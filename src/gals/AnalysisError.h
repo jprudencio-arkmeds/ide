@@ -1,9 +1,11 @@
 #ifndef ANALYSIS_ERROR_H
 #define ANALYSIS_ERROR_H
 
+#include "GalsDef.h"
+
 #include <string>
 
-class AnalysisError
+class _GALS_CLASS AnalysisError
 {
 public:
 

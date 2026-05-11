@@ -29,6 +29,7 @@ private:
 
     enum MessageKind { MSG_INFO, MSG_SUCCESS, MSG_WARNING, MSG_ERROR };
     void appendMessage(QTextEdit* panel, const QString& text, MessageKind kind = MSG_INFO);
+    void appendError(const int line, const int col, const QString& message);
     void clearMessages();
     void showTokens    (const std::vector<Token>& tokens);
 

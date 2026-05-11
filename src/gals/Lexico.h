@@ -3,10 +3,11 @@
 
 #include "Token.h"
 #include "LexicalError.h"
+#include "GalsDef.h"
 
 #include <string>
 
-class Lexico
+class _GALS_CLASS Lexico
 {
 public:
     Lexico(const char *input = "") { setInput(input); }

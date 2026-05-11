@@ -2,10 +2,11 @@
 #define TOKEN_H
 
 #include "Constants.h"
+#include "GalsDef.h"
 
 #include <string>
 
-class Token
+class _GALS_CLASS Token
 {
 public:
     Token(TokenId id, const std::string &lexeme, int position)

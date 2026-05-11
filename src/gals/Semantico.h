@@ -4,11 +4,12 @@
 #include "Token.h"
 #include "SemanticError.h"
 #include "SymbolTable.h"
+#include "GalsDef.h"
 
 #include <string>
 #include <vector>
 
-class Semantico {
+class _GALS_CLASS Semantico {
 public:
     void executeAction(int action, const Token* token);
 

@@ -6,10 +6,11 @@
 #include "Lexico.h"
 #include "Semantico.h"
 #include "SyntacticError.h"
+#include "GalsDef.h"
 
 #include <stack>
 
-class Sintatico
+class _GALS_CLASS Sintatico
 {
 public:
     Sintatico() : previousToken(0), currentToken(0) { }

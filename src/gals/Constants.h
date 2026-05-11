@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include "GalsDef.h"
+
 enum TokenId 
 {
     EPSILON  = 0,
@@ -94,11 +96,11 @@ enum TokenId
 
 const int STATES_COUNT = 210;
 
-extern int SCANNER_TABLE[STATES_COUNT][256];
+extern _GALS_CLASS int SCANNER_TABLE[STATES_COUNT][256];
 
-extern int TOKEN_STATE[STATES_COUNT];
+extern _GALS_CLASS int TOKEN_STATE[STATES_COUNT];
 
-extern const char *SCANNER_ERROR[STATES_COUNT];
+extern _GALS_CLASS const char *SCANNER_ERROR[STATES_COUNT];
 
 const int FIRST_SEMANTIC_ACTION = 144;
 
@@ -109,10 +111,10 @@ const int ACCEPT = 3;
 const int GO_TO  = 4;
 const int ERROR  = 5;
 
-extern const int PARSER_TABLE[243][144][2];
+extern _GALS_CLASS const int PARSER_TABLE[243][144][2];
 
-extern const int PRODUCTIONS[157][2];
+extern _GALS_CLASS const int PRODUCTIONS[157][2];
 
-extern const char *PARSER_ERROR[243];
+extern _GALS_CLASS const char *PARSER_ERROR[243];
 
 #endif

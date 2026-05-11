@@ -2,10 +2,11 @@
 #define LEXICAL_ERROR_H
 
 #include "AnalysisError.h"
+#include "GalsDef.h"
 
 #include <string>
 
-class LexicalError : public AnalysisError
+class _GALS_CLASS LexicalError : public AnalysisError
 {
 public:
 
