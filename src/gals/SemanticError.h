@@ -14,4 +14,13 @@ public:
       : AnalysisError(msg, position) { }
 };
 
+class _GALS_CLASS SemanticWarning : public AnalysisError
+{
+public:
+
+  SemanticWarning(const std::string& msg, int position = -1)
+    : AnalysisError(msg, position) {
+  }
+};
+
 #endif

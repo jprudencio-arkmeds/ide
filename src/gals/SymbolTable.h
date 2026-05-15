@@ -8,10 +8,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 struct _GALS_CLASS Symbol {
-    std::string type;
-    int         position; // offset no código-fonte
+  std::string type;
+  int         position      = -1; // offset no código-fonte
+  bool        isInitialized = false;
+  bool        isFunction    = false;
 };
 
 class _GALS_CLASS SymbolTable {
@@ -29,15 +32,16 @@ public:
             m_scopes.pop();
     }
 
-    bool addSymbol(const std::string& name, const std::string& type, int position = -1) {
+    std::shared_ptr<Symbol> addSymbol(const std::string& name, const std::string& type, bool isFunction, int position) {
         auto& top = m_scopes.top();
         if (top.find(name) != top.end())
-            return false;
-        top[name] = {type, position};
-        return true;
+            return nullptr;
+        auto symbol = std::make_shared<Symbol>(Symbol{ type, position, false, isFunction });
+        top[name] = symbol;
+        return symbol;
     }
 
-    std::optional<Symbol> lookupSymbol(const std::string& name) const {
+    std::shared_ptr<Symbol> lookupSymbol(const std::string& name) const {
         // Copia a pilha para percorrê-la sem destruí-la (pilha não tem iterador).
         auto temp = m_scopes;
         while (!temp.empty()) {
@@ -47,7 +51,7 @@ public:
                 return it->second;
             temp.pop();
         }
-        return std::nullopt;
+        return nullptr;
     }
 
     bool existsInCurrentScope(const std::string& name) const {
@@ -59,11 +63,11 @@ public:
         return static_cast<int>(m_scopes.size());
     }
 
-    std::vector<std::pair<std::string, Symbol>> visibleSymbols() const {
-        std::unordered_map<std::string, Symbol> visible;
+    std::vector<std::pair<std::string, std::shared_ptr<Symbol>>> visibleSymbols() const {
+        std::unordered_map<std::string, std::shared_ptr<Symbol>> visible;
         auto temp = m_scopes;
         // Percorre do mais externo ao mais interno para que o mais interno vença.
-        std::vector<std::unordered_map<std::string, Symbol>> layers;
+        std::vector<std::unordered_map<std::string, std::shared_ptr<Symbol>>> layers;
         while (!temp.empty()) {
             layers.push_back(temp.top());
             temp.pop();
@@ -80,8 +84,9 @@ public:
         enterScope();
     }
 
+
 private:
-    std::stack<std::unordered_map<std::string, Symbol>> m_scopes;
+    std::stack<std::unordered_map<std::string, std::shared_ptr<Symbol>>> m_scopes;
 };
 
 #endif

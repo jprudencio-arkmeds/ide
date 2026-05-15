@@ -284,18 +284,28 @@ void MainWindow::compile() {
         appendMessage(m_compilePanel, "");
         appendMessage(m_compilePanel, "=== Semantic Analysis ===");
         semantico.analyze(tokens);
-        const auto& semErrors = semantico.errors();
-        if (semErrors.empty()) {
+        const auto& errors = semantico.errors();
+        if (errors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
-        } 
+        }
         else {
-            for (const auto& e : semErrors) {
+            for (const auto& e : errors) {
                 int line, col;
                 posToLineCol(source, e.getPosition(), line, col);
                 appendError(line, col, e.getMessage());
             }
             appendMessage(m_compilePanel,
-                QString("  %1 semantic error(s) found.").arg((int)semErrors.size()), MSG_ERROR);
+                QString("  %1 semantic error(s) found.").arg((int)errors.size()), MSG_ERROR);
+        }
+        const auto& warnings = semantico.warnings();
+        if (!warnings.empty()) {
+            for (const auto& e : warnings) {
+                int line, col;
+                posToLineCol(source, e.getPosition(), line, col);
+                appendWarning(line, col, e.getMessage());
+            }
+            appendMessage(m_compilePanel,
+                QString("  %1 semantic warning(s) found.").arg((int)errors.size()), MSG_WARNING);
         }
     }
     catch (LexicalError& e) {
@@ -348,6 +358,11 @@ void MainWindow::showTokens(const std::vector<Token>& tokens) {
 void MainWindow::appendError(const int line, const int col, const QString& message) {
     appendMessage(m_compilePanel,
         QString("  [ERROR] Line %1, Col %2: %3").arg(line).arg(col).arg(message), MSG_ERROR);
+}
+
+void MainWindow::appendWarning(const int line, const int col, const QString& message) {
+    appendMessage(m_compilePanel,
+        QString("  [ERROR] Line %1, Col %2: %3").arg(line).arg(col).arg(message), MSG_WARNING);
 }
 
 void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKind kind) {
