@@ -12,13 +12,13 @@
 enum class Modality { VARIABLE, ARRAY, PARAMETER, FUNCTION };
 
 struct _GALS_CLASS Symbol {
-    std::string type;
-    Modality    modality      = Modality::VARIABLE;
-    int         position      = -1;
-    int         scopeDepth    = 0;
-    bool        isInitialized = false;
-    bool        isFunction    = false;
-    bool        isUsed        = false;
+  std::string type;
+  Modality    modality      = Modality::VARIABLE;
+  int         position      = -1;
+  int         scopeDepth    = 0;
+  bool        isInitialized = false;
+  bool        isFunction    = false;
+  bool        isUsed        = false;
 };
 
 struct _GALS_CLASS SymbolRecord {
@@ -29,7 +29,7 @@ struct _GALS_CLASS SymbolRecord {
 class _GALS_CLASS SymbolTable {
 public:
     SymbolTable() {
-        enterScope();
+        enterScope(); // escopo global
     }
 
     void enterScope() {
@@ -41,18 +41,20 @@ public:
             m_scopes.pop();
     }
 
+    // Assinatura original preservada; modality é derivada de isFunction e pode
+    // ser sobrescrita diretamente no Symbol retornado (ex: ARRAY, PARAMETER).
     std::shared_ptr<Symbol> addSymbol(const std::string& name, const std::string& type,
-                                      Modality modality, int position) {
+                                      bool isFunction, int position) {
         auto& top = m_scopes.top();
         if (top.find(name) != top.end())
             return nullptr;
-        bool isFn = (modality == Modality::FUNCTION);
-        auto sym = std::make_shared<Symbol>(Symbol{
-            type, modality, position, depth(), false, isFn, false
+        Modality mod = isFunction ? Modality::FUNCTION : Modality::VARIABLE;
+        auto symbol = std::make_shared<Symbol>(Symbol{
+            type, mod, position, depth(), false, isFunction, false
         });
-        top[name] = sym;
-        m_allSymbols.push_back({name, sym});
-        return sym;
+        top[name] = symbol;
+        m_allSymbols.push_back({name, symbol});
+        return symbol;
     }
 
     std::shared_ptr<Symbol> lookupSymbol(const std::string& name) const {
@@ -68,13 +70,15 @@ public:
     }
 
     bool existsInCurrentScope(const std::string& name) const {
-        return m_scopes.top().find(name) != m_scopes.top().end();
+        const auto& top = m_scopes.top();
+        return top.find(name) != top.end();
     }
 
     int depth() const {
         return static_cast<int>(m_scopes.size());
     }
 
+    // Retorna cópia do escopo atual (usado para checar não-usados antes do pop)
     std::unordered_map<std::string, std::shared_ptr<Symbol>> currentScopeSymbols() const {
         return m_scopes.top();
     }

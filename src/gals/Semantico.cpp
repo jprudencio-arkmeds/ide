@@ -13,21 +13,65 @@ static bool isModifier(TokenId id) {
            id == t_KEY_LONG;
 }
 
+static bool isBinaryOp(TokenId id) {
+    return id == t_KEY_PLUS       || id == t_KEY_MINUS      || id == t_KEY_MULTIPLY   ||
+           id == t_KEY_DIVIDE     || id == t_KEY_MOD        || id == t_KEY_AND        ||
+           id == t_KEY_OR         || id == t_KEY_BIT_AND    || id == t_KEY_BIT_OR     ||
+           id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT;
+}
+
+static std::string getTypeFromLiteral(TokenId id) {
+    switch (id) {
+        case t_INT: case t_BINARY: case t_HEX: return "int";
+        case t_REAL:   return "float";
+        case t_CHAR:   return "char";
+        case t_STRING: return "string";
+        default:       return "";
+    }
+}
+
 
 void Semantico::executeAction(int /*action*/, const Token* /*token*/) {
 }
 
 enum State { IDLE, IN_TYPE, IN_ASSIGN };
 
-State       state = IDLE;
-bool        isDeclaring = false;
+State       state         = IDLE;
+bool        isDeclaring   = false;
 std::string pendingType;
-TokenId     prevId = EPSILON;
+TokenId     prevId        = EPSILON;
 bool        skipNextBrace = false;
-
-Operator lastOperator = ASSIGN;
+bool        inParamList   = false;   // true enquanto estamos dentro de '(' params ')'
+Operator    lastOperator  = ASSIGN;
 
 void Semantico::analyze(const std::vector<Token>& tokens) {
+
+    // Reinicia todo o estado para permitir múltiplas compilações consecutivas
+    m_table.reset();
+    m_errors.clear();
+    m_warnings.clear();
+    while (!m_operatingVars.empty()) m_operatingVars.pop();
+    state         = IDLE;
+    isDeclaring   = false;
+    pendingType.clear();
+    prevId        = EPSILON;
+    skipNextBrace = false;
+    inParamList   = false;
+    lastOperator  = ASSIGN;
+    m_exprLeftType.clear();
+    m_exprOp      = EPSILON;
+
+    // Emite aviso para identificadores declarados mas não usados no escopo atual.
+    // Funções ficam de fora: podem fazer parte de uma API não chamada internamente.
+    auto checkUnused = [this]() {
+        for (auto& [name, sym] : m_table.currentScopeSymbols()) {
+            if (!sym->isUsed && sym->modality != Modality::FUNCTION) {
+                m_warnings.emplace_back(
+                    "Identificador '" + name + "' declarado mas nao utilizado.",
+                    sym->position);
+            }
+        }
+    };
 
     for (size_t i = 0; i < tokens.size(); ++i) {
         const Token& tok = tokens[i];
@@ -47,9 +91,21 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     skipNextBrace = false;
                 else
                     m_table.enterScope();
+                m_exprLeftType.clear(); m_exprOp = EPSILON;
 
             } else if (id == t_KEY_RIGHT_BRACE) {
+                checkUnused();
                 m_table.exitScope();
+                m_exprLeftType.clear(); m_exprOp = EPSILON;
+
+            } else if (id == t_END_LINE) {
+                m_exprLeftType.clear(); m_exprOp = EPSILON;
+
+            } else if (id == t_KEY_RIGHT_PARENTHESIS) {
+                if (inParamList) inParamList = false;
+
+            } else if (isBinaryOp(id)) {
+                m_exprOp = id;
 
             } else if (id == t_ID) {
                 // Acesso a membro (obj.campo / obj->campo) não é uso de variável.
@@ -61,21 +117,33 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                         const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
 
                         if (isDefaultAssign(nextId)) {
-                          state = IN_ASSIGN;
+                            m_exprOp = EPSILON;
+                            pendingType = symbol->type;
+                            state = IN_ASSIGN;
                         }
                         else if (isAssign(nextId)) {
-                          m_errors.emplace_back(
-                            "Não é possível realizar operações compostas na variável '" + tok.getLexeme() + "' em sua declaração.",
-                            tok.getPosition());
-
-                          pendingType.clear();
+                            m_errors.emplace_back(
+                                "Não é possível realizar operações compostas na variável '" + tok.getLexeme() + "' em sua declaração.",
+                                tok.getPosition());
+                            pendingType.clear();
                         }
                         else {
-                          state = IDLE;
-                          pendingType.clear();
+                            // Variável sendo lida: verifica inicialização e rastreia tipo
+                            if (!symbol->isInitialized && symbol->modality == Modality::VARIABLE) {
+                                m_warnings.emplace_back(
+                                    "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
+                                    tok.getPosition());
+                            }
+                            trackExprType(symbol->type, tok.getPosition());
+                            state = IDLE;
+                            pendingType.clear();
                         }
                     }
                 }
+            } else {
+                std::string lt = getTypeFromLiteral(id);
+                if (!lt.empty())
+                    trackExprType(lt, tok.getPosition());
             }
             break;
 
@@ -86,7 +154,9 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
             } else if (id == t_KEY_MULTIPLY) {
                 pendingType += "*";
             } else if (id == t_ID) {
-                bool isFunction = tokens[i + 1].getId() == t_KEY_LEFT_PARENTHESIS;
+                bool isFunction = (i + 1 < tokens.size()) && tokens[i + 1].getId() == t_KEY_LEFT_PARENTHESIS;
+                bool isArray    = !isFunction &&
+                                  (i + 1 < tokens.size()) && tokens[i + 1].getId() == t_KEY_LEFT_BRACKET;
 
                 std::shared_ptr<Symbol> symbol = m_table.addSymbol(tok.getLexeme(), pendingType, isFunction, tok.getPosition());
                 if (!symbol) {
@@ -97,9 +167,18 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
 
                 symbol = symbol.get() == nullptr ? lookupSymbol(tok.getLexeme(), tok.getPosition()) : symbol;
 
+                // Ajusta a modalidade conforme o contexto da declaração
+                if (symbol) {
+                    if (isArray)
+                        symbol->modality = Modality::ARRAY;
+                    else if (inParamList)
+                        symbol->modality = Modality::PARAMETER;
+                }
+
                 if (isFunction) {
                     m_table.enterScope();
                     skipNextBrace = true;
+                    inParamList   = true;  // os próximos identificadores até ')' são parâmetros
                 }
 
                 const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
@@ -122,6 +201,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 state = IDLE;
 
             } else if (id == t_KEY_RIGHT_BRACE) {
+                checkUnused();
                 m_table.exitScope();
                 pendingType.clear();
                 state = IDLE;
@@ -131,16 +211,15 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 state = IDLE;
             }
             break;
+
         case IN_ASSIGN:
             if (isAssign(id) || isUnaryOperator(id)) {
                 lastOperator = static_cast<Operator>(id);
                 break;
             }
 
-            Symbol* lastSymbol = m_operatingVars.top().get();
-
             if (id == t_ID) {
-                if (auto& symbol = lookupSymbol(tok.getLexeme(), tok.getPosition())) {
+                if (auto symbol = lookupSymbol(tok.getLexeme(), tok.getPosition())) {
                     if (!TypeOperationsTable::isCompatible(symbol->type, pendingType, lastOperator)) {
                         m_errors.emplace_back(
                             "Tipo incompatível na atribuição à variável '" + tok.getLexeme() + "'.",
@@ -152,6 +231,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                             "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
                             tok.getPosition());
                     }
+                    m_exprLeftType = symbol->type;
                 }
                 else {
                     m_errors.emplace_back(
@@ -164,25 +244,28 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 switch (id) {
                   case t_INT:
                   case t_BINARY:
-                  case t_HEX:    literalType = "int"; break;
-                  case t_REAL:   literalType = "float"; break;
-                  case t_CHAR:   literalType = "char"; break;
+                  case t_HEX:    literalType = "int";    break;
+                  case t_REAL:   literalType = "float";  break;
+                  case t_CHAR:   literalType = "char";   break;
                   case t_STRING: literalType = "string"; break;
-                  default:       literalType = ""; break;
+                  default:       literalType = "";       break;
                 }
-                if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastOperator)) {
-                    Symbol* lastSymbol = m_operatingVars.top().get();
-                    m_errors.emplace_back(
-                        "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
-                        tok.getPosition());
-                    pendingType.clear();
+                if (!literalType.empty()) {
+                    if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastOperator)) {
+                        Symbol* lastSymbol = m_operatingVars.top().get();
+                        m_errors.emplace_back(
+                            "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
+                            tok.getPosition());
+                        pendingType.clear();
+                    }
+                    m_exprLeftType = literalType;
                 }
             }
 
-            if (isDeclaring) {
-              m_operatingVars.top()->isInitialized = true;
-              isDeclaring = false;
-            }
+            // Qualquer atribuição completa marca o alvo como inicializado
+            if (!m_operatingVars.empty())
+                m_operatingVars.top()->isInitialized = true;
+            if (isDeclaring) isDeclaring = false;
 
             m_operatingVars.pop();
             state = IDLE;
@@ -191,6 +274,8 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
 
         prevId = id;
     }
+
+    checkUnused(); // verifica escopo global ao fim da análise
 }
 
 std::shared_ptr<Symbol> Semantico::lookupSymbol(const std::string& lexeme, const int position) {
@@ -199,6 +284,8 @@ std::shared_ptr<Symbol> Semantico::lookupSymbol(const std::string& lexeme, const
         m_errors.emplace_back(
             "Variável '" + lexeme + "' não declarada.",
             position);
+    } else {
+        symbol->isUsed = true;  // marca como utilizado
     }
     return symbol;
 }
@@ -217,4 +304,20 @@ bool Semantico::isDefaultAssign(const TokenId& tokId) const {
 
 bool Semantico::isUnaryOperator(const TokenId& tokId) const {
     return tokId == t_KEY_INCREMENT || tokId == t_KEY_DECREMENT;
+}
+
+void Semantico::trackExprType(const std::string& type, int position) {
+    if (!m_exprLeftType.empty() && m_exprOp != EPSILON) {
+        Operator op = static_cast<Operator>(m_exprOp);
+        if (!TypeOperationsTable::isCompatible(m_exprLeftType, type, op)) {
+            m_errors.emplace_back(
+                "Operação incompatível entre os tipos '" + m_exprLeftType + "' e '" + type + "'.",
+                position);
+        }
+        m_exprLeftType = type;
+        m_exprOp = EPSILON;
+    } else {
+        m_exprLeftType = type;
+        m_exprOp = EPSILON;
+    }
 }
