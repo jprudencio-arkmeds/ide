@@ -23,6 +23,7 @@ private slots:
     bool saveFile();
     bool saveFileAs();
     void compile();
+    void updateCursorPosition();
 
 private:
     void setupUI();
@@ -47,4 +48,5 @@ private:
     QLabel*         m_statusLabel;
 
     QString m_currentFile;
+    QLabel* m_cursorLabel;
 };

@@ -1,5 +1,6 @@
 #pragma once
 #include <QPlainTextEdit>
+#include <QTextEdit>
 #include <QWidget>
 
 class LineNumberArea;
@@ -12,6 +13,9 @@ public:
     void lineNumberAreaPaintEvent(QPaintEvent* event);
     int  lineNumberAreaWidth() const;
 
+    void setErrorSelections(const QList<QTextEdit::ExtraSelection>& sels);
+    void clearErrorSelections();
+
 protected:
     void resizeEvent(QResizeEvent* event) override;
 
@@ -22,6 +26,7 @@ private slots:
 
 private:
     QWidget* m_lineNumberArea;
+    QList<QTextEdit::ExtraSelection> m_errorSelections;
 };
 
 class LineNumberArea : public QWidget {

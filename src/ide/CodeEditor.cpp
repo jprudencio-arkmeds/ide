@@ -3,12 +3,12 @@
 #include <QTextBlock>
 #include <QResizeEvent>
 
-static const QColor BG_EDITOR       ("#0F0529");
-static const QColor BG_GUTTER       ("#4A2574");
-static const QColor COLOR_LINENO    ("#9E72C3");
-static const QColor COLOR_CURLINE   ("#1a083d");
-static const QColor COLOR_SELECTION ("#7338A0");
-static const QColor COLOR_TEXT      ("#f0e6ff");
+static const QColor BG_EDITOR       ("#0c1a0c");   // dark forest — referência à imagem
+static const QColor BG_GUTTER       ("#0a1509");   // ligeiramente mais escuro
+static const QColor COLOR_LINENO    ("#385438");   // verde acinzentado
+static const QColor COLOR_CURLINE   ("#132613");   // linha atual: tint verde suave
+static const QColor COLOR_SELECTION ("#1e401e");   // seleção: verde mais profundo
+static const QColor COLOR_TEXT      ("#c4d0c0");   // texto: branco-esverdeado quente
 
 CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent) {
     m_lineNumberArea = new LineNumberArea(this);
@@ -68,19 +68,33 @@ void CodeEditor::resizeEvent(QResizeEvent* event) {
 }
 
 void CodeEditor::highlightCurrentLine() {
-    QTextEdit::ExtraSelection sel;
-    sel.format.setBackground(COLOR_CURLINE);
-    sel.format.setProperty(QTextFormat::FullWidthSelection, true);
-    sel.cursor = textCursor();
-    sel.cursor.clearSelection();
-    setExtraSelections({sel});
+    QList<QTextEdit::ExtraSelection> all = m_errorSelections;
+
+    QTextEdit::ExtraSelection cur;
+    cur.format.setBackground(COLOR_CURLINE);
+    cur.format.setProperty(QTextFormat::FullWidthSelection, true);
+    cur.cursor = textCursor();
+    cur.cursor.clearSelection();
+    all.append(cur);
+
+    setExtraSelections(all);
+}
+
+void CodeEditor::setErrorSelections(const QList<QTextEdit::ExtraSelection>& sels) {
+    m_errorSelections = sels;
+    highlightCurrentLine();
+}
+
+void CodeEditor::clearErrorSelections() {
+    m_errorSelections.clear();
+    highlightCurrentLine();
 }
 
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
     QPainter painter(m_lineNumberArea);
     painter.fillRect(event->rect(), BG_GUTTER);
 
-    painter.setPen(QColor("#7338A0"));
+    painter.setPen(QColor("#1a2e1a"));
     painter.drawLine(m_lineNumberArea->width() - 1, event->rect().top(),
                      m_lineNumberArea->width() - 1, event->rect().bottom());
 

@@ -41,24 +41,45 @@ static QString tokenIdName(TokenId id) {
     }
 }
 
-static QFont panelFont() {
+static QFont panelFont(int pt = 12) {
     QFont f;
-    f.setFamilies({"Fira Code", "Fira Mono", "Courier New", "monospace"});
-    f.setPointSize(14);
+    f.setFamilies({"Fira Code", "Fira Mono", "Cascadia Code", "Courier New", "monospace"});
+    f.setPointSize(pt);
     f.setFixedPitch(true);
     return f;
 }
 
 static QPalette darkPalette() {
     QPalette p;
-    p.setColor(QPalette::Base,            QColor("#0F0529"));
-    p.setColor(QPalette::Text,            QColor("#e8d5ff"));
-    p.setColor(QPalette::Highlight,       QColor("#7338A0"));
+    p.setColor(QPalette::Base,            QColor("#13131a"));
+    p.setColor(QPalette::Text,            QColor("#c8cce0"));
+    p.setColor(QPalette::Highlight,       QColor("#3d2f8c"));
     p.setColor(QPalette::HighlightedText, Qt::white);
-    p.setColor(QPalette::Window,          QColor("#0F0529"));
-    p.setColor(QPalette::WindowText,      QColor("#e8d5ff"));
+    p.setColor(QPalette::Window,          QColor("#13131a"));
+    p.setColor(QPalette::WindowText,      QColor("#c8cce0"));
     return p;
 }
+
+static const char* TAB_STYLE =
+    "QTabWidget::pane  { border:none; background:#13131a; }"
+    "QTabBar::tab      { background:#0e0e18; color:#45456a;"
+    "                    padding:7px 18px; margin-right:1px;"
+    "                    border-top: 2px solid transparent; }"
+    "QTabBar::tab:selected { background:#1a1a26; color:#c8cce0;"
+    "                         border-top: 2px solid #5a44b0; }"
+    "QTabBar::tab:hover    { background:#14141e; color:#9090c0; }";
+
+static const char* TABLE_STYLE =
+    "QTableWidget { background:#13131a; color:#c8cce0;"
+    "               gridline-color:#1e1e2e; border:none; }"
+    "QTableWidget::item { padding:4px 8px;"
+    "                     border-bottom:1px solid #1a1a28; }"
+    "QTableWidget::item:selected { background:#3d2f8c; color:#ffffff; }"
+    "QHeaderView::section { background:#0e0e18; color:#45456a;"
+    "                        padding:6px 8px; border:none;"
+    "                        border-bottom:1px solid #2a2a40;"
+    "                        font-size:11px; text-transform:uppercase;"
+    "                        letter-spacing:1px; }";
 
 // ── MainWindow ──────────────────────────────────────────────────────────────
 
@@ -72,87 +93,86 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 void MainWindow::setupUI() {
     auto* outer = new QSplitter(Qt::Vertical, this);
-    outer->setHandleWidth(4);
+    outer->setHandleWidth(1);
 
     auto* inner = new QSplitter(Qt::Horizontal, outer);
-    inner->setHandleWidth(4);
+    inner->setHandleWidth(1);
 
+    // ── Editor ──────────────────────────────────────────────────────────────
     m_editor = new CodeEditor(this);
     m_editor->setPlaceholderText("Type your program here...");
+    m_editor->setFont(panelFont(13));
 
+    // ── Right panel: Tokens ──────────────────────────────────────────────────
     m_rightTabs = new QTabWidget(this);
     m_rightTabs->setFont(panelFont());
-    m_rightTabs->setStyleSheet(
-      "QTabWidget::pane  { border:none; background:#0F0529; }"
-      "QTabBar::tab      { background:#4A2574; color:#9E72C3;"
-      "                    padding:6px 18px; border-radius:6px 6px 0 0; margin-right:2px; }"
-      "QTabBar::tab:selected { background:#7338A0; color:#ffffff; }"
-      "QTabBar::tab:hover    { background:#7338A0; color:#e8d5ff; }");
+    m_rightTabs->setStyleSheet(TAB_STYLE);
 
     m_tokenTable = new QTableWidget(0, 4, this);
-    m_tokenTable->setHorizontalHeaderLabels({ "Line", "Col", "Type", "Value"});
-    m_tokenTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    m_tokenTable->horizontalHeader()->setStretchLastSection(false);
+    m_tokenTable->setHorizontalHeaderLabels({"Line", "Col", "Type", "Value"});
     m_tokenTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_tokenTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_tokenTable->setShowGrid(false);
+    m_tokenTable->verticalHeader()->setVisible(false);
+    m_tokenTable->verticalHeader()->setDefaultSectionSize(24);
     m_tokenTable->setFont(panelFont());
     m_tokenTable->setPalette(darkPalette());
-    m_tokenTable->setStyleSheet(
-      "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
-      "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
-      "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
-      "                        border:1px solid #7338A0; }");
+    m_tokenTable->setStyleSheet(TABLE_STYLE);
 
     m_rightTabs->addTab(m_tokenTable, "Tokens");
 
     inner->addWidget(m_editor);
     inner->addWidget(m_rightTabs);
-    inner->setStretchFactor(0, 6);
-    inner->setStretchFactor(1, 4);
+    inner->setStretchFactor(0, 63);
+    inner->setStretchFactor(1, 37);
 
+    // ── Footer tabs ──────────────────────────────────────────────────────────
     m_footerTabs = new QTabWidget(this);
     m_footerTabs->setFont(panelFont());
-    m_footerTabs->setStyleSheet(
-        "QTabWidget::pane  { border:none; background:#0F0529; }"
-        "QTabBar::tab      { background:#4A2574; color:#9E72C3;"
-        "                    padding:6px 18px; border-radius:6px 6px 0 0; margin-right:2px; }"
-        "QTabBar::tab:selected { background:#7338A0; color:#ffffff; }"
-        "QTabBar::tab:hover    { background:#7338A0; color:#e8d5ff; }");
+    m_footerTabs->setStyleSheet(TAB_STYLE);
 
     m_compilePanel = new QTextEdit(this);
     m_compilePanel->setReadOnly(true);
     m_compilePanel->setFont(panelFont());
     m_compilePanel->setPalette(darkPalette());
+    m_compilePanel->setStyleSheet(
+        "QTextEdit { background:#13131a; padding:8px 12px;"
+        "            border:none; line-height:1.5; }");
 
     m_outputPanel = new QTextEdit(this);
     m_outputPanel->setReadOnly(true);
     m_outputPanel->setFont(panelFont());
     m_outputPanel->setPalette(darkPalette());
+    m_outputPanel->setStyleSheet(
+        "QTextEdit { background:#13131a; padding:8px 12px; border:none; }");
 
     m_symbolTable = new QTableWidget(0, 6, this);
-    m_symbolTable->setHorizontalHeaderLabels({ "Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado" });
-    m_symbolTable->setColumnWidth(2, 120);
-    m_symbolTable->setColumnWidth(3, 200);
-    m_symbolTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    m_symbolTable->horizontalHeader()->setStretchLastSection(false);
+    m_symbolTable->setHorizontalHeaderLabels(
+        {"Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado"});
     m_symbolTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_symbolTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_symbolTable->setShowGrid(false);
+    m_symbolTable->verticalHeader()->setVisible(false);
+    m_symbolTable->verticalHeader()->setDefaultSectionSize(26);
+    m_symbolTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_symbolTable->horizontalHeader()->setStretchLastSection(true);
     m_symbolTable->setFont(panelFont());
     m_symbolTable->setPalette(darkPalette());
-    m_symbolTable->setStyleSheet(
-      "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
-      "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
-      "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
-      "                        border:1px solid #7338A0; }");
+    m_symbolTable->setStyleSheet(TABLE_STYLE);
+    m_symbolTable->setColumnWidth(0, 140);
+    m_symbolTable->setColumnWidth(1, 80);
+    m_symbolTable->setColumnWidth(2, 110);
+    m_symbolTable->setColumnWidth(3, 170);
+    m_symbolTable->setColumnWidth(4, 100);
 
-    m_footerTabs->addTab(m_compilePanel,  "Compilation");
-    m_footerTabs->addTab(m_outputPanel,   "Output");
-    m_footerTabs->addTab(m_symbolTable, "Símbolos");
+    m_footerTabs->addTab(m_compilePanel, "Compilation");
+    m_footerTabs->addTab(m_outputPanel,  "Output");
+    m_footerTabs->addTab(m_symbolTable,  "Símbolos");
 
     outer->addWidget(inner);
     outer->addWidget(m_footerTabs);
-    outer->setStretchFactor(0, 7);
-    outer->setStretchFactor(1, 3);
+    outer->setStretchFactor(0, 68);
+    outer->setStretchFactor(1, 32);
 
     setCentralWidget(outer);
 
@@ -164,6 +184,9 @@ void MainWindow::setupUI() {
         if (modified) title += "  *";
         setWindowTitle(title);
     });
+
+    connect(m_editor, &QPlainTextEdit::cursorPositionChanged,
+            this, &MainWindow::updateCursorPosition);
 }
 
 void MainWindow::setupMenus() {
@@ -175,13 +198,34 @@ void MainWindow::setupMenus() {
     file->addSeparator();
     file->addAction("E&xit", this, &QWidget::close, QKeySequence::Quit);
 
-    menuBar()->addAction("&Compile (F5)", this, &MainWindow::compile)->setShortcut(QKeySequence(Qt::Key_F5));
+    auto* compileAction = new QAction("&Compile (F5)", this);
+    compileAction->setShortcut(QKeySequence(Qt::Key_F5));
+    connect(compileAction, &QAction::triggered, this, &MainWindow::compile);
+    menuBar()->addAction(compileAction);
 }
 
 void MainWindow::setupStatusBar() {
+    statusBar()->setStyleSheet(
+        "QStatusBar { background:#0e0e18; border-top:1px solid #1e1e2e;"
+        "             padding:0 10px; font-size:12px; }");
+
     m_statusLabel = new QLabel("Ready", this);
     m_statusLabel->setFont(panelFont());
+    m_statusLabel->setStyleSheet("color:#45456a;");
     statusBar()->addWidget(m_statusLabel);
+
+    m_cursorLabel = new QLabel("Ln 1, Col 1", this);
+    m_cursorLabel->setFont(panelFont());
+    m_cursorLabel->setStyleSheet("color:#45456a; padding-right:4px;");
+    statusBar()->addPermanentWidget(m_cursorLabel);
+}
+
+void MainWindow::updateCursorPosition() {
+    QTextCursor c = m_editor->textCursor();
+    m_cursorLabel->setText(
+        QString("Ln %1, Col %2")
+            .arg(c.blockNumber() + 1)
+            .arg(c.positionInBlock() + 1));
 }
 
 static bool confirmDiscard(QWidget* p) {
@@ -203,6 +247,7 @@ void MainWindow::loadFile(const QString& path) {
 void MainWindow::newFile() {
     if (m_editor->document()->isModified() && !confirmDiscard(this)) return;
     m_editor->clear();
+    m_editor->clearErrorSelections();
     m_currentFile.clear();
     clearMessages();
     m_editor->document()->setModified(false);
@@ -244,6 +289,7 @@ bool MainWindow::saveFileAs() {
 
 void MainWindow::compile() {
     clearMessages();
+    m_editor->clearErrorSelections();
     const QString source = m_editor->toPlainText();
 
     if (source.trimmed().isEmpty()) {
@@ -307,11 +353,30 @@ void MainWindow::compile() {
         appendMessage(m_compilePanel, "");
         appendMessage(m_compilePanel, "=== Semantic Analysis ===");
         semantico.analyze(tokens);
-        const auto& errors = semantico.errors();
+        const auto& errors   = semantico.errors();
+        const auto& warnings = semantico.warnings();
+
+        // Destaque de linhas no editor
+        QList<QTextEdit::ExtraSelection> editorSels;
+        auto makeLineSel = [&](int pos, QColor bg) {
+            int line, col; posToLineCol(source, pos, line, col);
+            QTextCursor cur(m_editor->document());
+            cur.movePosition(QTextCursor::Start);
+            cur.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, line - 1);
+            cur.select(QTextCursor::LineUnderCursor);
+            QTextEdit::ExtraSelection sel;
+            sel.cursor = cur;
+            sel.format.setBackground(bg);
+            sel.format.setProperty(QTextFormat::FullWidthSelection, true);
+            editorSels.append(sel);
+        };
+        for (const auto& w : warnings) makeLineSel(w.getPosition(), QColor("#2a1e00"));
+        for (const auto& e : errors)   makeLineSel(e.getPosition(), QColor("#2d0c0c"));
+        m_editor->setErrorSelections(editorSels);
+
         if (errors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
-        }
-        else {
+        } else {
             for (const auto& e : errors) {
                 int line, col;
                 posToLineCol(source, e.getPosition(), line, col);
@@ -320,15 +385,29 @@ void MainWindow::compile() {
             appendMessage(m_compilePanel,
                 QString("  %1 semantic error(s) found.").arg((int)errors.size()), MSG_ERROR);
         }
-        const auto& warnings = semantico.warnings();
         if (!warnings.empty()) {
-            for (const auto& e : warnings) {
+            for (const auto& w : warnings) {
                 int line, col;
-                posToLineCol(source, e.getPosition(), line, col);
-                appendWarning(line, col, e.getMessage());
+                posToLineCol(source, w.getPosition(), line, col);
+                appendWarning(line, col, w.getMessage());
             }
             appendMessage(m_compilePanel,
                 QString("  %1 semantic warning(s) found.").arg((int)warnings.size()), MSG_WARNING);
+        }
+
+        // Status bar e troca automática de aba
+        if (errors.empty() && warnings.empty()) {
+            m_statusLabel->setText("Compilation successful — no errors");
+            m_footerTabs->setCurrentIndex(2); // Símbolos
+        } else if (!errors.empty()) {
+            m_statusLabel->setText(
+                QString("Compilation: %1 error(s), %2 warning(s)")
+                    .arg(errors.size()).arg(warnings.size()));
+            m_footerTabs->setCurrentIndex(0);
+        } else {
+            m_statusLabel->setText(
+                QString("Compilation: %1 warning(s)").arg(warnings.size()));
+            m_footerTabs->setCurrentIndex(0);
         }
 
         showSymbolTable(semantico.symbolTable());
@@ -364,18 +443,32 @@ void MainWindow::showTokens(const std::vector<Token>& tokens) {
     m_tokenTable->setRowCount(0);
     const QString source = m_editor->toPlainText();
 
+    // Configura colunas na primeira exibição
+    auto* hdr = m_tokenTable->horizontalHeader();
+    hdr->setSectionResizeMode(0, QHeaderView::Fixed);
+    hdr->setSectionResizeMode(1, QHeaderView::Fixed);
+    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(3, QHeaderView::Stretch);
+    m_tokenTable->setColumnWidth(0, 50);
+    m_tokenTable->setColumnWidth(1, 45);
+
     for (const Token& t : tokens) {
-      const int row = m_tokenTable->rowCount();
-      m_tokenTable->insertRow(row);
+        if (t.getId() == DOLLAR) continue;
+        const int row = m_tokenTable->rowCount();
+        m_tokenTable->insertRow(row);
 
-      if (t.getId() == DOLLAR) continue;
-      int line, col;
-      posToLineCol(source, t.getPosition(), line, col);
+        int line, col;
+        posToLineCol(source, t.getPosition(), line, col);
 
-      m_tokenTable->setItem(row, 0, new QTableWidgetItem(QString::number(line)));
-      m_tokenTable->setItem(row, 1, new QTableWidgetItem(QString::number(col)));
-      m_tokenTable->setItem(row, 2, new QTableWidgetItem(tokenIdName(t.getId())));
-      m_tokenTable->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(t.getLexeme())));
+        auto* lineItem = new QTableWidgetItem(QString::number(line));
+        auto* colItem  = new QTableWidgetItem(QString::number(col));
+        lineItem->setTextAlignment(Qt::AlignCenter);
+        colItem->setTextAlignment(Qt::AlignCenter);
+
+        m_tokenTable->setItem(row, 0, lineItem);
+        m_tokenTable->setItem(row, 1, colItem);
+        m_tokenTable->setItem(row, 2, new QTableWidgetItem(tokenIdName(t.getId())));
+        m_tokenTable->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(t.getLexeme())));
     }
 }
 
@@ -391,10 +484,10 @@ void MainWindow::appendWarning(const int line, const int col, const QString& mes
 
 void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKind kind) {
     static const QColor colors[] = {
-        QColor("#c9a8f5"),
-        QColor("#5dba7d"),
-        QColor("#f5c842"),
-        QColor("#ff6b6b"),
+        QColor("#8888b0"),   // INFO    — cinza-roxo
+        QColor("#4ec97a"),   // SUCCESS — verde
+        QColor("#d4a542"),   // WARNING — âmbar
+        QColor("#e05c5c"),   // ERROR   — vermelho
     };
     QTextCharFormat fmt;
     fmt.setForeground(colors[static_cast<int>(kind)]);
@@ -436,5 +529,16 @@ void MainWindow::showSymbolTable(const SymbolTable& table) {
         m_symbolTable->setItem(row, 3, new QTableWidgetItem(scope));
         m_symbolTable->setItem(row, 4, new QTableWidgetItem(record.symbol->isInitialized ? "Sim" : "Não"));
         m_symbolTable->setItem(row, 5, new QTableWidgetItem(record.symbol->isUsed        ? "Sim" : "Não"));
+
+        // Colorir linha conforme estado do símbolo
+        QColor rowBg;
+        if (!record.symbol->isUsed && record.symbol->modality != Modality::FUNCTION)
+            rowBg = QColor("#221c00");         // âmbar escuro — declarado mas não usado
+        else if (!record.symbol->isInitialized && record.symbol->modality == Modality::VARIABLE)
+            rowBg = QColor("#220a0a");         // vermelho escuro — não inicializado
+        if (rowBg.isValid())
+            for (int c = 0; c < 6; ++c)
+                if (auto* item = m_symbolTable->item(row, c))
+                    item->setBackground(rowBg);
     }
 }
