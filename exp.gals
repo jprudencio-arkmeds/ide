@@ -180,6 +180,11 @@ ID: [a-zA-Z_]+[a-zA-Z0-9_]*
 <literal>
 #Grammar
 
+// Acoes semanticas:
+// #1 declara variavel; #2 marca inicializacao por atribuicao;
+// #3 declara funcao; #4 declara parametro; #5 entra em escopo; #6 sai de escopo;
+// #7 valida atribuicao; #8 valida uso de identificador; #9 valida literal/tipo.
+
 // PROGRAMA
 <programa> ::= <lista_elementos>;
 <lista_elementos> ::= <lista_elementos> <elemento> | <elemento>;
@@ -187,8 +192,8 @@ ID: [a-zA-Z_]+[a-zA-Z0-9_]*
 
 // DECLARACOES
 <declaracao> ::= <declaracao_variavel> | <declaracao_funcao>;
-<declaracao_variavel> ::= <tipo> ID END_LINE | <tipo> ID KEY_ASSIGN <expressao> END_LINE | <tipo> ID KEY_LEFT_BRACKET <expressao> KEY_RIGHT_BRACKET END_LINE | <tipo> ID KEY_LEFT_BRACKET KEY_RIGHT_BRACKET END_LINE;
-<declaracao_funcao> ::= <tipo> ID KEY_LEFT_PARENTHESIS <opt_lista_parametros> KEY_RIGHT_PARENTHESIS <bloco>;
+<declaracao_variavel> ::= <tipo> ID #1 END_LINE | <tipo> ID #1 KEY_ASSIGN <expressao> #2 END_LINE | <tipo> ID #1 KEY_LEFT_BRACKET <expressao> KEY_RIGHT_BRACKET END_LINE | <tipo> ID #1 KEY_LEFT_BRACKET KEY_RIGHT_BRACKET END_LINE;
+<declaracao_funcao> ::= <tipo> ID #3 KEY_LEFT_PARENTHESIS <opt_lista_parametros> KEY_RIGHT_PARENTHESIS <bloco>;
 
 // TIPOS
 <tipo> ::= <opt_modificadores> <tipo_base> <opt_ponteiro>;
@@ -202,10 +207,10 @@ ID: [a-zA-Z_]+[a-zA-Z0-9_]*
 // PARAMETROS
 <opt_lista_parametros> ::= <lista_parametros> | î;
 <lista_parametros> ::= <lista_parametros> SEPARATOR <parametro> | <parametro>;
-<parametro> ::= <tipo> ID | <tipo> ID KEY_LEFT_BRACKET KEY_RIGHT_BRACKET;
+<parametro> ::= <tipo> ID #4 | <tipo> ID #4 KEY_LEFT_BRACKET KEY_RIGHT_BRACKET;
 
 // BLOCO E COMANDOS
-<bloco> ::= KEY_LEFT_BRACE <lista_comandos> KEY_RIGHT_BRACE | KEY_LEFT_BRACE KEY_RIGHT_BRACE;
+<bloco> ::= KEY_LEFT_BRACE #5 <lista_comandos> KEY_RIGHT_BRACE #6 | KEY_LEFT_BRACE #5 KEY_RIGHT_BRACE #6;
 <lista_comandos> ::= <lista_comandos> <comando> | <comando>;
 
 <comando> ::= <comando_if>
@@ -239,7 +244,7 @@ ID: [a-zA-Z_]+[a-zA-Z0-9_]*
 // EXPRESSOES (precedencia crescente de baixo para cima)
 <expressao> ::= <expressao_atrib>;
 
-<expressao_atrib> ::= <expressao_unaria> <op_atrib> <expressao_atrib> | <expressao_ternaria>;
+<expressao_atrib> ::= <expressao_unaria> <op_atrib> <expressao_atrib> #7 | <expressao_ternaria>;
 <op_atrib> ::= KEY_ASSIGN | KEY_PLUS_ASSIGN | KEY_MINUS_ASSIGN | KEY_MULTIPLY_ASSIGN | KEY_DIVIDE_ASSIGN | KEY_MOD_ASSIGN | KEY_AND_ASSIGN | KEY_OR_ASSIGN | KEY_XOR_ASSIGN | KEY_SHIFT_LEFT_ASSIGN | KEY_SHIFT_RIGHT_ASSIGN;
 
 <expressao_ternaria> ::= <expressao_or> QUESTION <expressao> COLON <expressao_ternaria> | <expressao_or>;
@@ -281,7 +286,7 @@ ID: [a-zA-Z_]+[a-zA-Z0-9_]*
                      | <expressao_posfix> KEY_DECREMENT
                      | <expressao_primaria>;
 
-<expressao_primaria> ::= ID | <literal> | KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS;
+<expressao_primaria> ::= ID #8 | <literal> #9 | KEY_LEFT_PARENTHESIS <expressao> KEY_RIGHT_PARENTHESIS;
 
 // ARGUMENTOS
 <opt_lista_argumentos> ::= <lista_argumentos> | î;
