@@ -28,6 +28,9 @@ private:
     bool isUnaryOperator(const TokenId& tokId) const;
 
     void trackExprType(const std::string& type, int position);
+    int checkUseOfUninitializedInParams(const std::vector<Token>& tokens, int index);
+    void checkUseOfUninitialized(const std::shared_ptr<Symbol>& symbol, const Token& tok);
+    void unaryCompatibilityCheck(const std::shared_ptr<Symbol>& symbol);
 
     SymbolTable                  m_table;
     std::vector<SemanticError>   m_errors;

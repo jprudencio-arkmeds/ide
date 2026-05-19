@@ -3,23 +3,23 @@
 #include <algorithm>
 
 namespace {
-  bool isNumeric(Type type) {
-    return type == INT || type == FLOAT || type == DOUBLE || type == CHAR;
-  }
+    bool isNumeric(Type type) {
+        return type == INT || type == FLOAT || type == DOUBLE || type == CHAR;
+    }
 
-  bool isRelationalOrLogical(Operator op) {
-    const int id = static_cast<int>(op);
-    return id == t_KEY_GREATER || id == t_KEY_LESS ||
-           id == t_KEY_GREATER_EQUAL || id == t_KEY_LESS_EQUAL ||
-           id == t_KEY_EQUAL || id == t_KEY_NOT_EQUAL ||
-           id == t_KEY_AND || id == t_KEY_OR;
-  }
+    bool isRelationalOrLogical(Operator op) {
+        const int id = static_cast<int>(op);
+        return  id == t_KEY_GREATER || id == t_KEY_LESS ||
+                id == t_KEY_GREATER_EQUAL || id == t_KEY_LESS_EQUAL ||
+                id == t_KEY_EQUAL || id == t_KEY_NOT_EQUAL ||
+                id == t_KEY_AND || id == t_KEY_OR;
+    }
 
-  bool isBitwiseOrShift(Operator op) {
-    const int id = static_cast<int>(op);
-    return id == t_KEY_BIT_AND || id == t_KEY_BIT_OR || id == t_KEY_BIT_XOR ||
-           id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT;
-  }
+    bool isBitwiseOrShift(Operator op) {
+        const int id = static_cast<int>(op);
+        return  id == t_KEY_BIT_AND || id == t_KEY_BIT_OR || id == t_KEY_BIT_XOR ||
+                id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT;
+    }
 }
 
 bool TypeOperationsTable::isCompatible(const std::string& left, const std::string& right, Operator op) {
@@ -52,12 +52,30 @@ bool TypeOperationsTable::isCompatible(const std::string& left, const std::strin
   }
 }
 
+bool TypeOperationsTable::isCompatibleUnary(const std::string& operand) {
+    try {
+        if (isConst(operand))
+            return false;
+
+        Type operandType = stringToType(operand);
+        return isNumeric(operandType);
+    }
+    catch (const std::invalid_argument&) {
+        return false;
+    }
+}
+
 Type TypeOperationsTable::stringToType(const std::string& str) {
-  if (str.find("int")) return INT;
-  if (str.find("float")) return FLOAT;
-  if (str.find("double")) return DOUBLE;
-  if (str.find("char")) return CHAR;
-  if (str.find("void")) return VOID;
-  if (str.find("string")) return STRING;
-  throw std::invalid_argument("Invalid type string: " + str);
+    if (str.find("int") != std::string::npos) return INT;
+    if (str.find("float") != std::string::npos) return FLOAT;
+    if (str.find("double") != std::string::npos) return DOUBLE;
+    if (str.find("char") != std::string::npos) return CHAR;
+    if (str.find("void") != std::string::npos) return VOID;
+    if (str.find("string") != std::string::npos) return STRING;
+    throw std::invalid_argument("Invalid type string: " + str);
+}
+
+bool TypeOperationsTable::isConst(const std::string& type)
+{
+    return type.find("const") != std::string::npos;
 }

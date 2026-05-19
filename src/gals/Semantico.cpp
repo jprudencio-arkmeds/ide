@@ -62,7 +62,8 @@ std::string pendingType;
 TokenId     prevId        = EPSILON;
 bool        skipNextBrace = false;
 bool        inParamList   = false;   // true enquanto estamos dentro de '(' params ')'
-Operator    lastOperator  = ASSIGN;
+Operator    lastAssign    = ASSIGN;
+bool        wasUnaryOp    = false;
 
 void Semantico::analyze(const std::vector<Token>& tokens) {
 
@@ -77,7 +78,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
     prevId        = EPSILON;
     skipNextBrace = false;
     inParamList   = false;
-    lastOperator  = ASSIGN;
+    wasUnaryOp    = false;
     m_exprLeftType.clear();
     m_exprOp      = EPSILON;
 
@@ -101,87 +102,136 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
 
         switch (state) {
 
-        case IDLE:
+        case IDLE: {
             if (isModifier(id) || isTypeBase(id)) {
                 pendingType = tok.getLexeme();
                 state = IN_TYPE;
+                break;
+            }
 
-            } else if (id == t_KEY_LEFT_BRACE) {
+            if (id == t_KEY_LEFT_BRACE) {
                 if (skipNextBrace)
                     skipNextBrace = false;
                 else
                     m_table.enterScope();
                 m_exprLeftType.clear(); m_exprOp = EPSILON;
 
-            } else if (id == t_KEY_RIGHT_BRACE) {
+                break;
+            }
+
+            if (id == t_KEY_RIGHT_BRACE) {
                 checkUnused();
                 m_table.exitScope();
                 m_exprLeftType.clear(); m_exprOp = EPSILON;
+                break;
+            }
 
-            } else if (id == t_END_LINE) {
+            if (id == t_END_LINE) {
                 m_exprLeftType.clear(); m_exprOp = EPSILON;
+                break;
+            }
 
-            } else if (id == t_KEY_RIGHT_PARENTHESIS) {
-                if (inParamList) inParamList = false;
+            if (id == t_KEY_RIGHT_PARENTHESIS) {
+                inParamList = false;  
+                break;
+            }
 
-            } else if (isBinaryOp(id)) {
-                m_exprOp = id;
+            if (isBinaryOp(id) || isUnaryOperator(id)) {
+                m_exprOp = id; 
+                break;
+            }
 
-            } else if (id == t_ID) {
+            if (id == t_ID) {
                 // Acesso a membro (obj.campo / obj->campo) não é uso de variável.
-                if (prevId != t_KEY_DOT && prevId != t_KEY_ARROW) {
-                    const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
-                    if (isBuiltinFunction(tok.getLexeme()) && nextId == t_KEY_LEFT_PARENTHESIS) {
-                        if (tok.getLexeme() == "read") {
-                            const size_t closeParen = findMatchingParen(tokens, i + 1);
-                            for (size_t j = i + 2; j < closeParen && j < tokens.size(); ++j) {
-                                if (tokens[j].getId() == t_ID) {
-                                    if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
-                                        readSymbol->isInitialized = true;
-                                    }
-                                }
-                            }
-                            i = closeParen;
+                if (prevId == t_KEY_DOT || prevId == t_KEY_ARROW) break;
+
+                const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
+                if (isBuiltinFunction(tok.getLexeme()) && nextId == t_KEY_LEFT_PARENTHESIS) {
+                    if (tok.getLexeme() == "read") {
+                        const size_t closeParen = findMatchingParen(tokens, i + 1);
+                        for (size_t j = i + 2; j < closeParen && j < tokens.size(); ++j) {
+                            if (tokens[j].getId() != t_ID) continue;
+
+                            if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition()))
+                                readSymbol->isInitialized = true;
                         }
+                        i = closeParen;
+                    }
+                    else { // write
+                        i = checkUseOfUninitializedInParams(tokens, i);
+                    }
+                    break;
+                }
+
+                if (std::shared_ptr<Symbol> symbol = lookupSymbol(tok.getLexeme(), tok.getPosition())) {
+
+                    if (nextId == t_KEY_LEFT_PARENTHESIS) {
+                        i = checkUseOfUninitializedInParams(tokens, i);
                         break;
                     }
 
-                    std::shared_ptr<Symbol> symbol = lookupSymbol(tok.getLexeme(), tok.getPosition());
-                    if (symbol) {
-                        m_operatingVars.push(symbol);
+                    m_operatingVars.push(symbol);
 
-                        if (isAssign(nextId)) {
-                            m_exprOp = EPSILON;
-                            pendingType = symbol->type;
-                            state = IN_ASSIGN;
-                        }
-                        else {
-                            // Variável sendo lida: verifica inicialização e rastreia tipo
-                            if (!symbol->isInitialized && symbol->modality == Modality::VARIABLE) {
-                                m_warnings.emplace_back(
-                                    "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
-                                    tok.getPosition());
-                            }
-                            trackExprType(symbol->type, tok.getPosition());
-                            state = IDLE;
-                            pendingType.clear();
-                        }
+                    if (isAssign(nextId)) {
+                        m_exprOp = EPSILON;
+                        pendingType = symbol->type;
+                        state = IN_ASSIGN;
+                        break;
                     }
-                }
-            } else {
-                std::string lt = getTypeFromLiteral(id);
-                if (!lt.empty())
-                    trackExprType(lt, tok.getPosition());
-            }
-            break;
 
-        case IN_TYPE:
+                    if (isUnaryOperator(nextId))
+                        unaryCompatibilityCheck(symbol);
+
+                    const bool wasUnaryOperator = isUnaryOperator(m_exprOp);
+                    if (wasUnaryOperator)
+                        unaryCompatibilityCheck(symbol);
+
+                    checkUseOfUninitialized(symbol, tok);
+                    trackExprType(symbol->type, tok.getPosition());
+                    state = IDLE;
+                    pendingType.clear();
+                }
+                break;
+            }
+
+            std::string lt = getTypeFromLiteral(id);
+            if (!lt.empty())
+                trackExprType(lt, tok.getPosition());
+            break;
+        }
+
+        case IN_TYPE: {
             isDeclaring = true;
             if (isModifier(id) || isTypeBase(id)) {
-                pendingType += " " + tok.getLexeme();
-            } else if (id == t_KEY_MULTIPLY) {
-                pendingType += "*";
-            } else if (id == t_ID) {
+                pendingType += " " + tok.getLexeme(); 
+                break;
+            }
+
+            if (id == t_KEY_MULTIPLY) {
+                pendingType += "*"; 
+                break;
+            }
+
+            if (id == t_KEY_LEFT_BRACE) {
+                if (skipNextBrace)
+                    skipNextBrace = false;
+                else
+                    m_table.enterScope();
+                pendingType.clear();
+                state = IDLE;
+                break;
+
+            }
+            
+            if (id == t_KEY_RIGHT_BRACE) {
+                checkUnused();
+                m_table.exitScope();
+                pendingType.clear();
+                state = IDLE;
+                break;
+            }
+
+            if (id == t_ID) {
                 bool isFunction = (i + 1 < tokens.size()) && tokens[i + 1].getId() == t_KEY_LEFT_PARENTHESIS;
                 bool isArray    = !isFunction &&
                                   (i + 1 < tokens.size()) && tokens[i + 1].getId() == t_KEY_LEFT_BRACKET;
@@ -221,36 +271,28 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     state = IDLE;
                     pendingType.clear();
                 }
-
-            } else if (id == t_KEY_LEFT_BRACE) {
-                if (skipNextBrace)
-                    skipNextBrace = false;
-                else
-                    m_table.enterScope();
-                pendingType.clear();
-                state = IDLE;
-
-            } else if (id == t_KEY_RIGHT_BRACE) {
-                checkUnused();
-                m_table.exitScope();
-                pendingType.clear();
-                state = IDLE;
-
-            } else {
-                pendingType.clear();
-                state = IDLE;
+                break;
             }
-            break;
+            
+            pendingType.clear();
+            state = IDLE;
 
-        case IN_ASSIGN:
-            if (isAssign(id) || isUnaryOperator(id)) {
-                lastOperator = static_cast<Operator>(id);
+            break;
+        }
+
+        case IN_ASSIGN: {
+            if (isAssign(id)) {
+                lastAssign = static_cast<Operator>(id);
+                break;
+            }
+            if (isUnaryOperator(id)) {
+                m_exprOp = id;
                 break;
             }
 
             if (id == t_ID) {
                 if (auto symbol = lookupSymbol(tok.getLexeme(), tok.getPosition())) {
-                    if (!TypeOperationsTable::isCompatible(symbol->type, pendingType, lastOperator)) {
+                    if (!TypeOperationsTable::isCompatible(symbol->type, pendingType, lastAssign)) {
                         m_errors.emplace_back(
                             "Tipo incompatível na atribuição à variável '" + tok.getLexeme() + "'.",
                             tok.getPosition());
@@ -261,27 +303,27 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                             "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
                             tok.getPosition());
                     }
+
+                    if (isUnaryOperator(m_exprOp)) {
+                        unaryCompatibilityCheck(symbol);
+                        m_exprOp = EPSILON;
+                    }
                     m_exprLeftType = symbol->type;
-                }
-                else {
-                    m_errors.emplace_back(
-                        "Variável ou função '" + tok.getLexeme() + "' não declarada.",
-                        tok.getPosition());
                 }
             }
             else {
                 std::string literalType;
                 switch (id) {
-                  case t_INT:
-                  case t_BINARY:
-                  case t_HEX:    literalType = "int";    break;
-                  case t_REAL:   literalType = "float";  break;
-                  case t_CHAR:   literalType = "char";   break;
-                  case t_STRING: literalType = "string"; break;
-                  default:       literalType = "";       break;
+                case t_INT:
+                case t_BINARY:
+                case t_HEX:    literalType = "int";    break;
+                case t_REAL:   literalType = "float";  break;
+                case t_CHAR:   literalType = "char";   break;
+                case t_STRING: literalType = "string"; break;
+                default:       literalType = "";       break;
                 }
                 if (!literalType.empty()) {
-                    if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastOperator)) {
+                    if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastAssign)) {
                         Symbol* lastSymbol = m_operatingVars.top().get();
                         m_errors.emplace_back(
                             "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
@@ -301,6 +343,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
             state = IDLE;
             break;
         }
+        }
 
         prevId = id;
     }
@@ -312,7 +355,7 @@ std::shared_ptr<Symbol> Semantico::lookupSymbol(const std::string& lexeme, const
     std::shared_ptr<Symbol> symbol = m_table.lookupSymbol(lexeme);
     if (!symbol) {
         m_errors.emplace_back(
-            "Variável '" + lexeme + "' não declarada.",
+            "Variável ou função '" + lexeme + "' não declarada.",
             position);
     } else {
         symbol->isUsed = true;  // marca como utilizado
@@ -349,5 +392,34 @@ void Semantico::trackExprType(const std::string& type, int position) {
     } else {
         m_exprLeftType = type;
         m_exprOp = EPSILON;
+    }
+}
+
+int Semantico::checkUseOfUninitializedInParams(const std::vector<Token>& tokens, int index) {
+    const size_t closeParen = findMatchingParen(tokens, index + 1);
+    for (size_t j = index + 2; j < closeParen && j < tokens.size(); ++j) {
+        if (tokens[j].getId() == t_ID) {
+            if (auto writeSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
+                checkUseOfUninitialized(writeSymbol, tokens[j]);
+            }
+        }
+    }
+
+    return closeParen;
+}
+
+void Semantico::checkUseOfUninitialized(const std::shared_ptr<Symbol>& symbol, const Token& tok) {
+    if (!symbol->isInitialized && symbol->modality == Modality::VARIABLE) {
+        m_warnings.emplace_back(
+            "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
+            tok.getPosition());
+    }
+}
+
+void Semantico::unaryCompatibilityCheck(const std::shared_ptr<Symbol>& symbol) {
+    if (!TypeOperationsTable::isCompatibleUnary(symbol->type)) {
+        m_errors.emplace_back(
+            "Operação unária incompatível para o tipo '" + symbol->type + "'.",
+            symbol->position);
     }
 }
