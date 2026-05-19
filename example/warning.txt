@@ -1,0 +1,4 @@
+const int a;
+const int b = a; // variavel sem inicializar
+
+const int c; // variavel sem uso

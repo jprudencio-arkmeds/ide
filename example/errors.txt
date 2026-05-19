@@ -1,0 +1,45 @@
+// 1. ARRAY SIMPLES PASSA:
+
+int main() {
+    int v[3];
+    int i;
+
+    i = 0;
+    v[0] = 10;
+    v[1] = 20;
+    v[2] = v[0] + v[1];
+
+    write(v[2]);
+    return 0;
+}
+
+
+// 2. ARRAY COM INDICE NAO DECLARADO - ERRO:
+
+int main() {
+    int v[3];
+
+    v[i] = 10;
+
+    return 0;
+}
+
+
+// 3. TIPO NAO COMPATIVEL - ERRO
+
+int main1() {
+    int v;
+
+    v = "texto";
+
+    return 0;
+}
+
+// 4. OPERACAO NAO COMPATIVEL - ERRO
+int main2() {
+	int i = 3;
+	string c = "";
+	c++;
+	c += "";
+	return i * c;
+}
