@@ -110,6 +110,7 @@ void MainWindow::setupUI() {
 
     m_tokenTable = new QTableWidget(0, 4, this);
     m_tokenTable->setHorizontalHeaderLabels({"Line", "Col", "Type", "Value"});
+    m_tokenTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
     m_tokenTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_tokenTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tokenTable->setShowGrid(false);
@@ -149,6 +150,7 @@ void MainWindow::setupUI() {
     m_symbolTable = new QTableWidget(0, 6, this);
     m_symbolTable->setHorizontalHeaderLabels(
         {"Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado"});
+    m_symbolTable->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
     m_symbolTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_symbolTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_symbolTable->setShowGrid(false);
@@ -462,8 +464,6 @@ void MainWindow::showTokens(const std::vector<Token>& tokens) {
 
         auto* lineItem = new QTableWidgetItem(QString::number(line));
         auto* colItem  = new QTableWidgetItem(QString::number(col));
-        lineItem->setTextAlignment(Qt::AlignCenter);
-        colItem->setTextAlignment(Qt::AlignCenter);
 
         m_tokenTable->setItem(row, 0, lineItem);
         m_tokenTable->setItem(row, 1, colItem);
