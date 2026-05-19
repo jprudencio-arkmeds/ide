@@ -2,10 +2,42 @@
 
 #include <algorithm>
 
+namespace {
+  bool isNumeric(Type type) {
+    return type == INT || type == FLOAT || type == DOUBLE || type == CHAR;
+  }
+
+  bool isRelationalOrLogical(Operator op) {
+    const int id = static_cast<int>(op);
+    return id == t_KEY_GREATER || id == t_KEY_LESS ||
+           id == t_KEY_GREATER_EQUAL || id == t_KEY_LESS_EQUAL ||
+           id == t_KEY_EQUAL || id == t_KEY_NOT_EQUAL ||
+           id == t_KEY_AND || id == t_KEY_OR;
+  }
+
+  bool isBitwiseOrShift(Operator op) {
+    const int id = static_cast<int>(op);
+    return id == t_KEY_BIT_AND || id == t_KEY_BIT_OR || id == t_KEY_BIT_XOR ||
+           id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT;
+  }
+}
+
 bool TypeOperationsTable::isCompatible(const std::string& left, const std::string& right, Operator op) {
   try {
     Type leftType = stringToType(left);
     Type rightType = stringToType(right);
+
+    if (isRelationalOrLogical(op)) {
+      if (op == static_cast<Operator>(t_KEY_EQUAL) || op == static_cast<Operator>(t_KEY_NOT_EQUAL)) {
+        return leftType == rightType || (isNumeric(leftType) && isNumeric(rightType));
+      }
+      return isNumeric(leftType) && isNumeric(rightType);
+    }
+
+    if (isBitwiseOrShift(op)) {
+      return (leftType == INT || leftType == CHAR) && (rightType == INT || rightType == CHAR);
+    }
+
     auto leftIt = compatibleAtribuitionTypeTable.find(leftType);
     if (leftIt == compatibleAtribuitionTypeTable.end())
       return false;

@@ -17,7 +17,9 @@ static bool isBinaryOp(TokenId id) {
     return id == t_KEY_PLUS       || id == t_KEY_MINUS      || id == t_KEY_MULTIPLY   ||
            id == t_KEY_DIVIDE     || id == t_KEY_MOD        || id == t_KEY_AND        ||
            id == t_KEY_OR         || id == t_KEY_BIT_AND    || id == t_KEY_BIT_OR     ||
-           id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT;
+           id == t_KEY_BIT_XOR    || id == t_KEY_SHIFT_LEFT || id == t_KEY_SHIFT_RIGHT ||
+           id == t_KEY_GREATER    || id == t_KEY_LESS       || id == t_KEY_GREATER_EQUAL ||
+           id == t_KEY_LESS_EQUAL || id == t_KEY_EQUAL      || id == t_KEY_NOT_EQUAL;
 }
 
 static std::string getTypeFromLiteral(TokenId id) {
@@ -28,6 +30,24 @@ static std::string getTypeFromLiteral(TokenId id) {
         case t_STRING: return "string";
         default:       return "";
     }
+}
+
+static bool isBuiltinFunction(const std::string& lexeme) {
+    return lexeme == "read" || lexeme == "write";
+}
+
+static size_t findMatchingParen(const std::vector<Token>& tokens, size_t openParen) {
+    int depth = 0;
+    for (size_t i = openParen; i < tokens.size(); ++i) {
+        TokenId id = tokens[i].getId();
+        if (id == t_KEY_LEFT_PARENTHESIS) {
+            ++depth;
+        } else if (id == t_KEY_RIGHT_PARENTHESIS) {
+            --depth;
+            if (depth == 0) return i;
+        }
+    }
+    return tokens.size();
 }
 
 
@@ -110,11 +130,25 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
             } else if (id == t_ID) {
                 // Acesso a membro (obj.campo / obj->campo) não é uso de variável.
                 if (prevId != t_KEY_DOT && prevId != t_KEY_ARROW) {
+                    const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
+                    if (isBuiltinFunction(tok.getLexeme()) && nextId == t_KEY_LEFT_PARENTHESIS) {
+                        if (tok.getLexeme() == "read") {
+                            const size_t closeParen = findMatchingParen(tokens, i + 1);
+                            for (size_t j = i + 2; j < closeParen && j < tokens.size(); ++j) {
+                                if (tokens[j].getId() == t_ID) {
+                                    if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
+                                        readSymbol->isInitialized = true;
+                                    }
+                                }
+                            }
+                            i = closeParen;
+                        }
+                        break;
+                    }
+
                     std::shared_ptr<Symbol> symbol = lookupSymbol(tok.getLexeme(), tok.getPosition());
                     if (symbol) {
                         m_operatingVars.push(symbol);
-
-                        const TokenId nextId = (i + 1 < tokens.size()) ? tokens[i + 1].getId() : EPSILON;
 
                         if (isDefaultAssign(nextId)) {
                             m_exprOp = EPSILON;
@@ -169,10 +203,12 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
 
                 // Ajusta a modalidade conforme o contexto da declaração
                 if (symbol) {
-                    if (isArray)
-                        symbol->modality = Modality::ARRAY;
-                    else if (inParamList)
+                    if (inParamList) {
                         symbol->modality = Modality::PARAMETER;
+                        symbol->isInitialized = true;
+                    } else if (isArray) {
+                        symbol->modality = Modality::ARRAY;
+                    }
                 }
 
                 if (isFunction) {
