@@ -53,11 +53,11 @@ bool TypeOperationsTable::isCompatible(const std::string& left, const std::strin
 }
 
 Type TypeOperationsTable::stringToType(const std::string& str) {
-  if (str == "int") return INT;
-  if (str == "float") return FLOAT;
-  if (str == "double") return DOUBLE;
-  if (str == "char") return CHAR;
-  if (str == "void") return VOID;
-  if (str == "string") return STRING;
+  if (str.find("int")) return INT;
+  if (str.find("float")) return FLOAT;
+  if (str.find("double")) return DOUBLE;
+  if (str.find("char")) return CHAR;
+  if (str.find("void")) return VOID;
+  if (str.find("string")) return STRING;
   throw std::invalid_argument("Invalid type string: " + str);
 }
