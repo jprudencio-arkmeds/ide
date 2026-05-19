@@ -150,16 +150,10 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     if (symbol) {
                         m_operatingVars.push(symbol);
 
-                        if (isDefaultAssign(nextId)) {
+                        if (isAssign(nextId)) {
                             m_exprOp = EPSILON;
                             pendingType = symbol->type;
                             state = IN_ASSIGN;
-                        }
-                        else if (isAssign(nextId)) {
-                            m_errors.emplace_back(
-                                "Não é possível realizar operações compostas na variável '" + tok.getLexeme() + "' em sua declaração.",
-                                tok.getPosition());
-                            pendingType.clear();
                         }
                         else {
                             // Variável sendo lida: verifica inicialização e rastreia tipo
