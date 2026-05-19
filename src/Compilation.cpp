@@ -69,6 +69,10 @@ CompileResult compileSource(const std::string& source) {
             result.messages.push_back({CompileMessageKind::Error,
                 formatError("SEMANTIC", e.getMessage(), e.getPosition(), source)});
         }
+        for (const auto& w : semantico.warnings()) {
+            result.messages.push_back({CompileMessageKind::Warning,
+                formatError("SEMANTIC WARNING", w.getMessage(), w.getPosition(), source)});
+        }
     } catch (const SyntacticError& e) {
         result.success = false;
         result.messages.push_back({CompileMessageKind::Error, formatError("SYNTAX", e.getMessage(), e.getPosition(), source)});

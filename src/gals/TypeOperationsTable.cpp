@@ -1,5 +1,7 @@
 #include "TypeOperationsTable.h"
 
+#include <algorithm>
+
 bool TypeOperationsTable::isCompatible(const std::string& left, const std::string& right, Operator op) {
   try {
     Type leftType = stringToType(left);

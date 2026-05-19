@@ -21,6 +21,7 @@
 #include <QTextCursor>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QHeaderView>
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -123,8 +124,23 @@ void MainWindow::setupUI() {
     m_outputPanel->setFont(panelFont());
     m_outputPanel->setPalette(darkPalette());
 
-    m_tabs->addTab(m_compilePanel, "Compilation");
-    m_tabs->addTab(m_outputPanel,  "Output");
+    m_symbolTable = new QTableWidget(0, 6, this);
+    m_symbolTable->setHorizontalHeaderLabels({"Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado"});
+    m_symbolTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_symbolTable->horizontalHeader()->setStretchLastSection(true);
+    m_symbolTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_symbolTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_symbolTable->setFont(panelFont());
+    m_symbolTable->setPalette(darkPalette());
+    m_symbolTable->setStyleSheet(
+        "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
+        "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
+        "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
+        "                        border:1px solid #7338A0; }");
+
+    m_tabs->addTab(m_compilePanel,  "Compilation");
+    m_tabs->addTab(m_outputPanel,   "Output");
+    m_tabs->addTab(m_symbolTable,   "Tabela de Símbolos");
 
     outer->addWidget(inner);
     outer->addWidget(m_tabs);
@@ -145,12 +161,12 @@ void MainWindow::setupUI() {
 
 void MainWindow::setupMenus() {
     QMenu* file = menuBar()->addMenu("&File");
-    file->addAction("&New", QKeySequence::New, this, &MainWindow::newFile);
-    file->addAction("&Open", QKeySequence::Open, this, &MainWindow::openFile);
-    file->addAction("&Save", QKeySequence::Save, this, &MainWindow::saveFile);
-    file->addAction("Save &As...", QKeySequence::SaveAs, this, &MainWindow::saveFileAs);
+    file->addAction("&New",        this, &MainWindow::newFile,    QKeySequence::New);
+    file->addAction("&Open",       this, &MainWindow::openFile,   QKeySequence::Open);
+    file->addAction("&Save",       this, &MainWindow::saveFile,   QKeySequence::Save);
+    file->addAction("Save &As...", this, &MainWindow::saveFileAs, QKeySequence::SaveAs);
     file->addSeparator();
-    file->addAction("E&xit", QKeySequence::Quit, this, &QWidget::close);
+    file->addAction("E&xit", this, &QWidget::close, QKeySequence::Quit);
 
     menuBar()->addAction("&Compile (F5)", this, &MainWindow::compile)->setShortcut(QKeySequence(Qt::Key_F5));
 }
@@ -305,8 +321,10 @@ void MainWindow::compile() {
                 appendWarning(line, col, e.getMessage());
             }
             appendMessage(m_compilePanel,
-                QString("  %1 semantic warning(s) found.").arg((int)errors.size()), MSG_WARNING);
+                QString("  %1 semantic warning(s) found.").arg((int)warnings.size()), MSG_WARNING);
         }
+
+        showSymbolTable(semantico.symbolTable());
     }
     catch (LexicalError& e) {
       int line, col;
@@ -362,7 +380,7 @@ void MainWindow::appendError(const int line, const int col, const QString& messa
 
 void MainWindow::appendWarning(const int line, const int col, const QString& message) {
     appendMessage(m_compilePanel,
-        QString("  [ERROR] Line %1, Col %2: %3").arg(line).arg(col).arg(message), MSG_WARNING);
+        QString("  [WARNING] Line %1, Col %2: %3").arg(line).arg(col).arg(message), MSG_WARNING);
 }
 
 void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKind kind) {
@@ -384,4 +402,32 @@ void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKin
 void MainWindow::clearMessages() {
     m_compilePanel->clear();
     m_outputPanel->clear();
+    m_symbolTable->setRowCount(0);
+}
+
+void MainWindow::showSymbolTable(const SymbolTable& table) {
+    m_symbolTable->setRowCount(0);
+
+    for (const auto& record : table.allSymbols()) {
+        const int row = m_symbolTable->rowCount();
+        m_symbolTable->insertRow(row);
+
+        QString modality;
+        switch (record.symbol->modality) {
+            case Modality::VARIABLE:  modality = "Variável";  break;
+            case Modality::ARRAY:     modality = "Vetor";     break;
+            case Modality::PARAMETER: modality = "Parâmetro"; break;
+            case Modality::FUNCTION:  modality = "Função";    break;
+        }
+
+        const int depth = record.symbol->scopeDepth;
+        const QString scope = depth <= 1 ? "Global" : QString("Local (nível %1)").arg(depth);
+
+        m_symbolTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(record.name)));
+        m_symbolTable->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(record.symbol->type)));
+        m_symbolTable->setItem(row, 2, new QTableWidgetItem(modality));
+        m_symbolTable->setItem(row, 3, new QTableWidgetItem(scope));
+        m_symbolTable->setItem(row, 4, new QTableWidgetItem(record.symbol->isInitialized ? "Sim" : "Não"));
+        m_symbolTable->setItem(row, 5, new QTableWidgetItem(record.symbol->isUsed        ? "Sim" : "Não"));
+    }
 }

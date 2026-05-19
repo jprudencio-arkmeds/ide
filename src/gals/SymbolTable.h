@@ -3,24 +3,33 @@
 
 #include "GalsDef.h"
 
-#include <optional>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <memory>
 
+enum class Modality { VARIABLE, ARRAY, PARAMETER, FUNCTION };
+
 struct _GALS_CLASS Symbol {
-  std::string type;
-  int         position      = -1; // offset no código-fonte
-  bool        isInitialized = false;
-  bool        isFunction    = false;
+    std::string type;
+    Modality    modality      = Modality::VARIABLE;
+    int         position      = -1;
+    int         scopeDepth    = 0;
+    bool        isInitialized = false;
+    bool        isFunction    = false;
+    bool        isUsed        = false;
+};
+
+struct _GALS_CLASS SymbolRecord {
+    std::string name;
+    std::shared_ptr<Symbol> symbol;
 };
 
 class _GALS_CLASS SymbolTable {
 public:
     SymbolTable() {
-        enterScope(); // escopo global
+        enterScope();
     }
 
     void enterScope() {
@@ -32,17 +41,21 @@ public:
             m_scopes.pop();
     }
 
-    std::shared_ptr<Symbol> addSymbol(const std::string& name, const std::string& type, bool isFunction, int position) {
+    std::shared_ptr<Symbol> addSymbol(const std::string& name, const std::string& type,
+                                      Modality modality, int position) {
         auto& top = m_scopes.top();
         if (top.find(name) != top.end())
             return nullptr;
-        auto symbol = std::make_shared<Symbol>(Symbol{ type, position, false, isFunction });
-        top[name] = symbol;
-        return symbol;
+        bool isFn = (modality == Modality::FUNCTION);
+        auto sym = std::make_shared<Symbol>(Symbol{
+            type, modality, position, depth(), false, isFn, false
+        });
+        top[name] = sym;
+        m_allSymbols.push_back({name, sym});
+        return sym;
     }
 
     std::shared_ptr<Symbol> lookupSymbol(const std::string& name) const {
-        // Copia a pilha para percorrê-la sem destruí-la (pilha não tem iterador).
         auto temp = m_scopes;
         while (!temp.empty()) {
             const auto& scope = temp.top();
@@ -55,18 +68,24 @@ public:
     }
 
     bool existsInCurrentScope(const std::string& name) const {
-        const auto& top = m_scopes.top();
-        return top.find(name) != top.end();
+        return m_scopes.top().find(name) != m_scopes.top().end();
     }
 
     int depth() const {
         return static_cast<int>(m_scopes.size());
     }
 
+    std::unordered_map<std::string, std::shared_ptr<Symbol>> currentScopeSymbols() const {
+        return m_scopes.top();
+    }
+
+    const std::vector<SymbolRecord>& allSymbols() const {
+        return m_allSymbols;
+    }
+
     std::vector<std::pair<std::string, std::shared_ptr<Symbol>>> visibleSymbols() const {
         std::unordered_map<std::string, std::shared_ptr<Symbol>> visible;
         auto temp = m_scopes;
-        // Percorre do mais externo ao mais interno para que o mais interno vença.
         std::vector<std::unordered_map<std::string, std::shared_ptr<Symbol>>> layers;
         while (!temp.empty()) {
             layers.push_back(temp.top());
@@ -81,12 +100,13 @@ public:
     void reset() {
         while (!m_scopes.empty())
             m_scopes.pop();
+        m_allSymbols.clear();
         enterScope();
     }
 
-
 private:
     std::stack<std::unordered_map<std::string, std::shared_ptr<Symbol>>> m_scopes;
+    std::vector<SymbolRecord> m_allSymbols;
 };
 
 #endif
