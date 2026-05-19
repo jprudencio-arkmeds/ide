@@ -80,34 +80,39 @@ void MainWindow::setupUI() {
     m_editor = new CodeEditor(this);
     m_editor->setPlaceholderText("Type your program here...");
 
-    auto* rightWidget = new QWidget(this);
-    auto* rightLayout = new QVBoxLayout(rightWidget);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(0);
+    m_rightTabs = new QTabWidget(this);
+    m_rightTabs->setFont(panelFont());
+    m_rightTabs->setStyleSheet(
+      "QTabWidget::pane  { border:none; background:#0F0529; }"
+      "QTabBar::tab      { background:#4A2574; color:#9E72C3;"
+      "                    padding:6px 18px; border-radius:6px 6px 0 0; margin-right:2px; }"
+      "QTabBar::tab:selected { background:#7338A0; color:#ffffff; }"
+      "QTabBar::tab:hover    { background:#7338A0; color:#e8d5ff; }");
 
-    auto* tokenLabel = new QLabel("  Tokens", rightWidget);
-    tokenLabel->setFont(panelFont());
-    tokenLabel->setStyleSheet(
-        "background:#4A2574; color:#9E72C3;"
-        "padding:6px 10px; border-bottom:1px solid #7338A0;");
+    m_tokenTable = new QTableWidget(0, 4, this);
+    m_tokenTable->setHorizontalHeaderLabels({ "Line", "Col", "Type", "Value"});
+    m_tokenTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_tokenTable->horizontalHeader()->setStretchLastSection(false);
+    m_tokenTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_tokenTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_tokenTable->setFont(panelFont());
+    m_tokenTable->setPalette(darkPalette());
+    m_tokenTable->setStyleSheet(
+      "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
+      "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
+      "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
+      "                        border:1px solid #7338A0; }");
 
-    m_tokenPanel = new QPlainTextEdit(rightWidget);
-    m_tokenPanel->setReadOnly(true);
-    m_tokenPanel->setFont(panelFont());
-    m_tokenPanel->setPalette(darkPalette());
-    m_tokenPanel->setPlaceholderText("Tokens will appear here after compilation...");
-
-    rightLayout->addWidget(tokenLabel);
-    rightLayout->addWidget(m_tokenPanel);
+    m_rightTabs->addTab(m_tokenTable, "Tokens");
 
     inner->addWidget(m_editor);
-    inner->addWidget(rightWidget);
+    inner->addWidget(m_rightTabs);
     inner->setStretchFactor(0, 6);
     inner->setStretchFactor(1, 4);
 
-    m_tabs = new QTabWidget(this);
-    m_tabs->setFont(panelFont());
-    m_tabs->setStyleSheet(
+    m_footerTabs = new QTabWidget(this);
+    m_footerTabs->setFont(panelFont());
+    m_footerTabs->setStyleSheet(
         "QTabWidget::pane  { border:none; background:#0F0529; }"
         "QTabBar::tab      { background:#4A2574; color:#9E72C3;"
         "                    padding:6px 18px; border-radius:6px 6px 0 0; margin-right:2px; }"
@@ -125,25 +130,27 @@ void MainWindow::setupUI() {
     m_outputPanel->setPalette(darkPalette());
 
     m_symbolTable = new QTableWidget(0, 6, this);
-    m_symbolTable->setHorizontalHeaderLabels({"Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado"});
-    m_symbolTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    m_symbolTable->horizontalHeader()->setStretchLastSection(true);
+    m_symbolTable->setHorizontalHeaderLabels({ "Nome", "Tipo", "Modalidade", "Escopo", "Inicializado", "Usado" });
+    m_symbolTable->setColumnWidth(2, 120);
+    m_symbolTable->setColumnWidth(3, 200);
+    m_symbolTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_symbolTable->horizontalHeader()->setStretchLastSection(false);
     m_symbolTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_symbolTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_symbolTable->setFont(panelFont());
     m_symbolTable->setPalette(darkPalette());
     m_symbolTable->setStyleSheet(
-        "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
-        "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
-        "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
-        "                        border:1px solid #7338A0; }");
+      "QTableWidget { background:#0F0529; color:#e8d5ff; gridline-color:#4A2574; }"
+      "QTableWidget::item:selected { background:#7338A0; color:#ffffff; }"
+      "QHeaderView::section { background:#4A2574; color:#9E72C3; padding:4px;"
+      "                        border:1px solid #7338A0; }");
 
-    m_tabs->addTab(m_compilePanel,  "Compilation");
-    m_tabs->addTab(m_outputPanel,   "Output");
-    m_tabs->addTab(m_symbolTable,   "Tabela de Símbolos");
+    m_footerTabs->addTab(m_compilePanel,  "Compilation");
+    m_footerTabs->addTab(m_outputPanel,   "Output");
+    m_footerTabs->addTab(m_symbolTable, "Símbolos");
 
     outer->addWidget(inner);
-    outer->addWidget(m_tabs);
+    outer->addWidget(m_footerTabs);
     outer->setStretchFactor(0, 7);
     outer->setStretchFactor(1, 3);
 
@@ -195,8 +202,9 @@ void MainWindow::loadFile(const QString& path) {
 
 void MainWindow::newFile() {
     if (m_editor->document()->isModified() && !confirmDiscard(this)) return;
-    m_editor->clear(); clearMessages(); m_tokenPanel->clear();
+    m_editor->clear();
     m_currentFile.clear();
+    clearMessages();
     m_editor->document()->setModified(false);
     setWindowTitle("Compiler IDE");
     m_statusLabel->setText("New file");
@@ -236,7 +244,6 @@ bool MainWindow::saveFileAs() {
 
 void MainWindow::compile() {
     clearMessages();
-    m_tokenPanel->clear();
     const QString source = m_editor->toPlainText();
 
     if (source.trimmed().isEmpty()) {
@@ -281,7 +288,7 @@ void MainWindow::compile() {
 
     if (lexErrors > 0) {
         m_statusLabel->setText(QString("Lexical errors: %1").arg(lexErrors));
-        m_tabs->setCurrentIndex(0);
+        m_footerTabs->setCurrentIndex(0);
         return;
     }
 
@@ -330,7 +337,7 @@ void MainWindow::compile() {
       int line, col;
       posToLineCol(source, e.getPosition(), line, col);
       appendError(line, col, e.getMessage());
-      m_tabs->setCurrentIndex(0);
+      m_footerTabs->setCurrentIndex(0);
       return;
     }
     catch (SyntacticError& e) {
@@ -339,7 +346,7 @@ void MainWindow::compile() {
       appendError(line, col, e.getMessage());
       appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
       m_statusLabel->setText("Compilation failed: 1 error(s)");
-      m_tabs->setCurrentIndex(0);
+      m_footerTabs->setCurrentIndex(0);
       return;
     }
     catch (SemanticError& e) {
@@ -348,29 +355,28 @@ void MainWindow::compile() {
       appendError(line, col, e.getMessage());
       appendMessage(m_compilePanel, "\n  1 syntax error(s) found.", MSG_ERROR);
       m_statusLabel->setText("Compilation failed: 1 error(s)");
-      m_tabs->setCurrentIndex(0);
+      m_footerTabs->setCurrentIndex(0);
       return;
     }
 }
 
 void MainWindow::showTokens(const std::vector<Token>& tokens) {
-    m_tokenPanel->clear();
+    m_tokenTable->setRowCount(0);
     const QString source = m_editor->toPlainText();
-    QString out;
-    out += QString(" %1  %2  %3  %4\n").arg("Line", 4).arg("Col", 3).arg("Type", -20).arg("Value");
-    out += QString(60, '-') + "\n";
 
     for (const Token& t : tokens) {
-        if (t.getId() == DOLLAR) continue;
-        int line, col;
-        posToLineCol(source, t.getPosition(), line, col);
-        out += QString(" %1  %2  %3  %4\n")
-            .arg(line, 4)
-            .arg(col,  3)
-            .arg(tokenIdName(t.getId()), -20)
-            .arg(QString::fromStdString(t.getLexeme()));
+      const int row = m_tokenTable->rowCount();
+      m_tokenTable->insertRow(row);
+
+      if (t.getId() == DOLLAR) continue;
+      int line, col;
+      posToLineCol(source, t.getPosition(), line, col);
+
+      m_tokenTable->setItem(row, 0, new QTableWidgetItem(QString::number(line)));
+      m_tokenTable->setItem(row, 1, new QTableWidgetItem(QString::number(col)));
+      m_tokenTable->setItem(row, 2, new QTableWidgetItem(tokenIdName(t.getId())));
+      m_tokenTable->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(t.getLexeme())));
     }
-    m_tokenPanel->setPlainText(out);
 }
 
 void MainWindow::appendError(const int line, const int col, const QString& message) {
@@ -402,6 +408,7 @@ void MainWindow::appendMessage(QTextEdit* panel, const QString& text, MessageKin
 void MainWindow::clearMessages() {
     m_compilePanel->clear();
     m_outputPanel->clear();
+    m_tokenTable->setRowCount(0);
     m_symbolTable->setRowCount(0);
 }
 

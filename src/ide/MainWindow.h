@@ -38,11 +38,12 @@ private:
     void showSymbolTable(const SymbolTable& table);
 
     CodeEditor*     m_editor;
-    QPlainTextEdit* m_tokenPanel;
+    QTableWidget*   m_tokenTable;
     QTextEdit*      m_compilePanel;
     QTextEdit*      m_outputPanel;
     QTableWidget*   m_symbolTable;
-    QTabWidget*     m_tabs;
+    QTabWidget*     m_rightTabs;
+    QTabWidget*     m_footerTabs;
     QLabel*         m_statusLabel;
 
     QString m_currentFile;
