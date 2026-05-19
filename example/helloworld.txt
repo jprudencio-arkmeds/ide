@@ -2,3 +2,16 @@ int main() {
     write("Hello world!");
     return 0;
 }
+
+int soma(int a, int b) {
+    int resultado = a + b;
+    return resultado;
+}
+
+int demo() {
+    int x = 10;
+    int y = 20;
+    int total = soma(x, y);
+    write(total);
+    return 0;
+}
