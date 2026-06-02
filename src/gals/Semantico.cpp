@@ -298,11 +298,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                             tok.getPosition());
                     }
 
-                    if (!symbol->isFunction && !symbol->isInitialized) {
-                        m_warnings.emplace_back(
-                            "Uso de variável '" + tok.getLexeme() + "' sem inicialização. Possível uso de lixo de memória.",
-                            tok.getPosition());
-                    }
+                    checkUseOfUninitialized(symbol, tok);
 
                     if (isUnaryOperator(m_exprOp)) {
                         unaryCompatibilityCheck(symbol);
