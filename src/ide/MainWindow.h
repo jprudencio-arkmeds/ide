@@ -40,6 +40,7 @@ private:
 
     CodeEditor*     m_editor;
     QTableWidget*   m_tokenTable;
+    QPlainTextEdit* m_asmPanel;
     QTextEdit*      m_compilePanel;
     QTextEdit*      m_outputPanel;
     QTableWidget*   m_symbolTable;

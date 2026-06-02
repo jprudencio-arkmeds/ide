@@ -120,7 +120,22 @@ void MainWindow::setupUI() {
     m_tokenTable->setPalette(darkPalette());
     m_tokenTable->setStyleSheet(TABLE_STYLE);
 
+    m_asmPanel = new QPlainTextEdit(this);
+    QFont font;
+    font.setFamilies({ "Fira Code", "Fira Mono", "Courier New", "monospace" });
+    font.setPointSize(14);
+    font.setFixedPitch(true);
+    m_asmPanel->setFont(font);
+    m_asmPanel->setReadOnly(true);
+    m_asmPanel->setPlainText( // place holder
+      ".data\n"
+      "\t"
+      ".text\n"
+      "\t"
+    );
+
     m_rightTabs->addTab(m_tokenTable, "Tokens");
+    m_rightTabs->addTab(m_asmPanel, "Assembly");
 
     inner->addWidget(m_editor);
     inner->addWidget(m_rightTabs);
