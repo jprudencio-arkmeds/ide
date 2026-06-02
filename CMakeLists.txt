@@ -61,8 +61,9 @@ if (Qt6Widgets_FOUND)
     file(GLOB GUI_HEADERS
         src/ide/*.h
     )
-
-    add_executable(compilador ${GUI_SOURCES} ${HEADERS} ${GUI_HEADERS})
+		
+		add_executable(compilador WIN32 ${GUI_SOURCES} ${HEADERS} ${GUI_HEADERS})
+		
     target_link_libraries(compilador Qt6::Widgets gals)
     target_include_directories(compilador PRIVATE src)
 else()
