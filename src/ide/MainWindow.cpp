@@ -393,6 +393,7 @@ void MainWindow::compile() {
 
         if (errors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
+            m_asmPanel->setPlainText(semantico.getAssembly().c_str());
         } else {
             for (const auto& e : errors) {
                 int line, col;
@@ -528,28 +529,28 @@ void MainWindow::showSymbolTable(const SymbolTable& table) {
         m_symbolTable->insertRow(row);
 
         QString modality;
-        switch (record.symbol->modality) {
+        switch (record->modality) {
             case Modality::VARIABLE:  modality = "Variável";  break;
             case Modality::ARRAY:     modality = "Vetor";     break;
             case Modality::PARAMETER: modality = "Parâmetro"; break;
             case Modality::FUNCTION:  modality = "Função";    break;
         }
 
-        const int depth = record.symbol->scopeDepth;
+        const int depth = record->scopeDepth;
         const QString scope = depth <= 1 ? "Global" : QString("Local (nível %1)").arg(depth);
 
-        m_symbolTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(record.name)));
-        m_symbolTable->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(record.symbol->type)));
+        m_symbolTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(record->name)));
+        m_symbolTable->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(record->type)));
         m_symbolTable->setItem(row, 2, new QTableWidgetItem(modality));
         m_symbolTable->setItem(row, 3, new QTableWidgetItem(scope));
-        m_symbolTable->setItem(row, 4, new QTableWidgetItem(record.symbol->isInitialized ? "Sim" : "Não"));
-        m_symbolTable->setItem(row, 5, new QTableWidgetItem(record.symbol->isUsed        ? "Sim" : "Não"));
+        m_symbolTable->setItem(row, 4, new QTableWidgetItem(record->isInitialized ? "Sim" : "Não"));
+        m_symbolTable->setItem(row, 5, new QTableWidgetItem(record->isUsed        ? "Sim" : "Não"));
 
         // Colorir linha conforme estado do símbolo
         QColor rowBg;
-        if (!record.symbol->isUsed && record.symbol->modality != Modality::FUNCTION)
+        if (!record->isUsed && record->modality != Modality::FUNCTION)
             rowBg = QColor("#221c00");         // âmbar escuro — declarado mas não usado
-        else if (!record.symbol->isInitialized && record.symbol->modality == Modality::VARIABLE)
+        else if (!record->isInitialized && record->modality == Modality::VARIABLE)
             rowBg = QColor("#220a0a");         // vermelho escuro — não inicializado
         if (rowBg.isValid())
             for (int c = 0; c < 6; ++c)

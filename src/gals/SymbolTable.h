@@ -19,11 +19,9 @@ struct _GALS_CLASS Symbol {
   bool        isInitialized = false;
   bool        isFunction    = false;
   bool        isUsed        = false;
-};
 
-struct _GALS_CLASS SymbolRecord {
-    std::string name;
-    std::shared_ptr<Symbol> symbol;
+  std::string name;
+  std::string value;
 };
 
 class _GALS_CLASS SymbolTable {
@@ -50,10 +48,10 @@ public:
             return nullptr;
         Modality mod = isFunction ? Modality::FUNCTION : Modality::VARIABLE;
         auto symbol = std::make_shared<Symbol>(Symbol{
-            type, mod, position, depth(), false, isFunction, false
+            type, mod, position, depth(), false, isFunction, false, name, ""
         });
         top[name] = symbol;
-        m_allSymbols.push_back({name, symbol});
+        m_allSymbols.push_back(symbol);
         return symbol;
     }
 
@@ -83,7 +81,7 @@ public:
         return m_scopes.top();
     }
 
-    const std::vector<SymbolRecord>& allSymbols() const {
+    const std::vector<std::shared_ptr<Symbol>>& allSymbols() const {
         return m_allSymbols;
     }
 
@@ -110,7 +108,7 @@ public:
 
 private:
     std::stack<std::unordered_map<std::string, std::shared_ptr<Symbol>>> m_scopes;
-    std::vector<SymbolRecord> m_allSymbols;
+    std::vector<std::shared_ptr<Symbol>> m_allSymbols;
 };
 
 #endif

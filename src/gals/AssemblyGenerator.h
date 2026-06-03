@@ -1,0 +1,29 @@
+#ifndef ASSEMBLY_GENERATOR_H
+#define ASSEMBLY_GENERATOR_H
+
+#include "gals_export.h"
+#include "SymbolTable.h"
+#include <string>
+
+class _GALS_CLASS AssemblyGenerator
+{
+	public:
+		AssemblyGenerator() = default;
+		virtual ~AssemblyGenerator() = default;
+
+    std::string getAssembly() const { return m_assemblyData + "\n" + m_assemblyText; }
+
+    void reset() {
+      m_assemblyData = ".data\n";
+      m_assemblyText = ".text\n";
+    }
+
+		void appendData(Symbol* symbol);
+
+		void appendFunction(std::string name);
+	private:
+		std::string m_assemblyData = ".data\n";
+    std::string m_assemblyText = ".text\n";
+};
+
+#endif

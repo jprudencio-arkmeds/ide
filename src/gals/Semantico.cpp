@@ -71,6 +71,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
     m_table.reset();
     m_errors.clear();
     m_warnings.clear();
+    m_assemblyGen.reset();
     while (!m_operatingVars.empty()) m_operatingVars.pop();
     state         = IDLE;
     isDeclaring   = false;
@@ -268,6 +269,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     state = IN_ASSIGN;
                 }
                 else {
+                    isFunction ? m_assemblyGen.appendFunction(tok.getLexeme()) : m_assemblyGen.appendData(symbol.get());
                     state = IDLE;
                     pendingType.clear();
                 }
@@ -305,6 +307,10 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                         m_exprOp = EPSILON;
                     }
                     m_exprLeftType = symbol->type;
+
+                    if (symbol->modality == Modality::VARIABLE) {
+                      m_operatingVars.top()->value = symbol->value;
+                    }
                 }
             }
             else {
@@ -319,12 +325,15 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 default:       literalType = "";       break;
                 }
                 if (!literalType.empty()) {
+                    Symbol* lastSymbol = m_operatingVars.top().get();
                     if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastAssign)) {
-                        Symbol* lastSymbol = m_operatingVars.top().get();
                         m_errors.emplace_back(
                             "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
                             tok.getPosition());
                         pendingType.clear();
+                    }
+                    else {
+                      lastSymbol->value = tok.getLexeme();
                     }
                     m_exprLeftType = literalType;
                 }
@@ -333,7 +342,11 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
             // Qualquer atribuição completa marca o alvo como inicializado
             if (!m_operatingVars.empty())
                 m_operatingVars.top()->isInitialized = true;
-            if (isDeclaring) isDeclaring = false;
+            
+            if (isDeclaring)
+              appendAssemblyData(m_operatingVars.top().get());
+                
+            isDeclaring = false;
 
             m_operatingVars.pop();
             state = IDLE;
@@ -418,4 +431,10 @@ void Semantico::unaryCompatibilityCheck(const std::shared_ptr<Symbol>& symbol) {
             "Operação unária incompatível para o tipo '" + symbol->type + "'.",
             symbol->position);
     }
+}
+
+void Semantico::appendAssemblyData(Symbol* var) {
+  if (var->modality == Modality::VARIABLE) {
+    m_assemblyGen.appendData(var);
+  }
 }
