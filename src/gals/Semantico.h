@@ -46,6 +46,12 @@ private:
     TokenId     m_exprOp = EPSILON;
 
     AssemblyGenerator m_assemblyGen;
+
+    Symbol* m_assignLHSSymbol = nullptr;
+    int     m_assignLHSIndex  = -1;
+    bool    m_accLoaded       = false;
+    TokenId m_cgPendingOp     = EPSILON;
+    bool    m_bitNotPending   = false;
 };
 
 #endif

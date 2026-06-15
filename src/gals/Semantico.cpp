@@ -36,6 +36,19 @@ static bool isBuiltinFunction(const std::string& lexeme) {
     return lexeme == "read" || lexeme == "write";
 }
 
+static TokenId compoundAssignToBinaryOp(TokenId assignOp) {
+    switch (assignOp) {
+    case t_KEY_PLUS_ASSIGN:         return t_KEY_PLUS;
+    case t_KEY_MINUS_ASSIGN:        return t_KEY_MINUS;
+    case t_KEY_AND_ASSIGN:          return t_KEY_BIT_AND;
+    case t_KEY_OR_ASSIGN:           return t_KEY_BIT_OR;
+    case t_KEY_XOR_ASSIGN:          return t_KEY_BIT_XOR;
+    case t_KEY_SHIFT_LEFT_ASSIGN:   return t_KEY_SHIFT_LEFT;
+    case t_KEY_SHIFT_RIGHT_ASSIGN:  return t_KEY_SHIFT_RIGHT;
+    default:                        return EPSILON;
+    }
+}
+
 static size_t findMatchingParen(const std::vector<Token>& tokens, size_t openParen) {
     int depth = 0;
     for (size_t i = openParen; i < tokens.size(); ++i) {
@@ -81,7 +94,12 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
     inParamList   = false;
     wasUnaryOp    = false;
     m_exprLeftType.clear();
-    m_exprOp      = EPSILON;
+    m_exprOp        = EPSILON;
+    m_assignLHSSymbol = nullptr;
+    m_assignLHSIndex  = -1;
+    m_accLoaded       = false;
+    m_cgPendingOp     = EPSILON;
+    m_bitNotPending   = false;
 
     // Emite aviso para identificadores declarados mas não usados no escopo atual.
     // Funções ficam de fora: podem fazer parte de uma API não chamada internamente.
@@ -183,11 +201,42 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                         break;
                     }
 
+                    if (nextId == t_KEY_LEFT_BRACKET && symbol->modality == Modality::ARRAY) {
+                        if (i + 3 < tokens.size() &&
+                            tokens[i + 3].getId() == t_KEY_RIGHT_BRACKET &&
+                            i + 4 < tokens.size() &&
+                            isAssign(tokens[i + 4].getId()))
+                        {
+                            int arrayIdx = 0;
+                            TokenId idxTokId = tokens[i + 2].getId();
+                            if (idxTokId == t_INT || idxTokId == t_HEX || idxTokId == t_BINARY)
+                                arrayIdx = std::stoi(tokens[i + 2].getLexeme(), nullptr, 0);
+                            // Avança i para ']'; o for vai para '='
+                            i += 3;
+                            symbol->isUsed = true;
+                            m_operatingVars.push(symbol);
+                            pendingType       = symbol->type;
+                            m_exprOp          = EPSILON;
+                            m_assignLHSSymbol = symbol.get();
+                            m_assignLHSIndex  = arrayIdx;
+                            m_accLoaded       = false;
+                            m_cgPendingOp     = EPSILON;
+                            m_bitNotPending   = false;
+                            state = IN_ASSIGN;
+                            break;
+                        }
+                    }
+
                     m_operatingVars.push(symbol);
 
                     if (isAssign(nextId)) {
-                        m_exprOp = EPSILON;
-                        pendingType = symbol->type;
+                        m_exprOp          = EPSILON;
+                        pendingType       = symbol->type;
+                        m_assignLHSSymbol = symbol.get();
+                        m_assignLHSIndex  = -1;
+                        m_accLoaded       = false;
+                        m_cgPendingOp     = EPSILON;
+                        m_bitNotPending   = false;
                         state = IN_ASSIGN;
                         break;
                     }
@@ -292,12 +341,14 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 }
                 else {
                     isFunction ? m_assemblyGen.appendFunction(tok.getLexeme()) : m_assemblyGen.appendData(symbol.get());
-                    state = IDLE;
+                    state       = IDLE;
+                    isDeclaring = false;
                     pendingType.clear();
                 }
                 break;
             }
-            
+
+            isDeclaring = false;
             pendingType.clear();
             state = IDLE;
 
@@ -307,71 +358,173 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
         case IN_ASSIGN: {
             if (isAssign(id)) {
                 lastAssign = static_cast<Operator>(id);
+                if (!isDeclaring && id != t_KEY_ASSIGN && m_assignLHSSymbol) {
+                    if (m_assignLHSIndex >= 0)
+                        m_assemblyGen.appendLoadArrayElem(m_assignLHSSymbol, m_assignLHSIndex);
+                    else
+                        m_assemblyGen.appendLoadVar(m_assignLHSSymbol);
+                    m_accLoaded   = true;
+                    m_cgPendingOp = compoundAssignToBinaryOp(id);
+                }
                 break;
             }
+
+            if (id == t_KEY_BIT_NOT && !isDeclaring) {
+                m_bitNotPending = true;
+                break;
+            }
+
             if (isUnaryOperator(id)) {
                 m_exprOp = id;
                 break;
             }
 
+            if (isBinaryOp(id) && !isDeclaring) {
+                m_cgPendingOp = id;
+                break;
+            }
+
+            if (id == t_END_LINE && !isDeclaring) {
+                if (m_accLoaded && m_assignLHSSymbol) {
+                    m_assemblyGen.appendStoreResult(m_assignLHSSymbol, m_assignLHSIndex);
+                }
+                if (!m_operatingVars.empty()) {
+                    m_operatingVars.top()->isInitialized = true;
+                    m_operatingVars.pop();
+                }
+                m_assignLHSSymbol = nullptr;
+                m_assignLHSIndex  = -1;
+                m_accLoaded       = false;
+                m_cgPendingOp     = EPSILON;
+                m_bitNotPending   = false;
+                m_exprLeftType.clear();
+                m_exprOp = EPSILON;
+                state    = IDLE;
+                break;
+            }
+
             if (id == t_ID) {
+                bool isArrayAccess = (i + 1 < tokens.size()) &&
+                                     tokens[i + 1].getId() == t_KEY_LEFT_BRACKET;
+
                 if (auto symbol = lookupSymbol(tok.getLexeme(), tok.getPosition())) {
-                    if (!TypeOperationsTable::isCompatible(symbol->type, pendingType, lastAssign)) {
-                        m_errors.emplace_back(
-                            "Tipo incompatível na atribuição à variável '" + tok.getLexeme() + "'.",
-                            tok.getPosition());
-                    }
+                    if (!isDeclaring) {
+                        if (!m_accLoaded &&
+                            !TypeOperationsTable::isCompatible(symbol->type, pendingType, lastAssign)) {
+                            m_errors.emplace_back(
+                                "Tipo incompatível na atribuição à variável '" + tok.getLexeme() + "'.",
+                                tok.getPosition());
+                        }
+                        checkUseOfUninitialized(symbol, tok);
 
-                    checkUseOfUninitialized(symbol, tok);
+                        int arrayIdx = -1;
+                        if (isArrayAccess && i + 3 < tokens.size()) {
+                            TokenId idxTokId = tokens[i + 2].getId();
+                            if (idxTokId == t_INT || idxTokId == t_HEX || idxTokId == t_BINARY)
+                                arrayIdx = std::stoi(tokens[i + 2].getLexeme(), nullptr, 0);
+                            i += 3;
+                        }
 
-                    if (isUnaryOperator(m_exprOp)) {
-                        unaryCompatibilityCheck(symbol);
-                        m_exprOp = EPSILON;
-                    }
-                    m_exprLeftType = symbol->type;
+                        if (!m_accLoaded) {
+                            if (arrayIdx >= 0)
+                                m_assemblyGen.appendLoadArrayElem(symbol.get(), arrayIdx);
+                            else
+                                m_assemblyGen.appendLoadVar(symbol.get());
+                            if (m_bitNotPending) {
+                                m_assemblyGen.appendNot();
+                                m_bitNotPending = false;
+                            }
+                            m_accLoaded    = true;
+                            m_exprLeftType = symbol->type;
+                        } else {
+                            if (arrayIdx >= 0)
+                                m_assemblyGen.appendBinaryOpWithArray(m_cgPendingOp, symbol.get(), arrayIdx);
+                            else
+                                m_assemblyGen.appendBinaryOp(m_cgPendingOp, symbol.get());
+                            m_cgPendingOp  = EPSILON;
+                            m_exprLeftType = symbol->type;
+                        }
+                    } else {
+                        if (!TypeOperationsTable::isCompatible(symbol->type, pendingType, lastAssign)) {
+                            m_errors.emplace_back(
+                                "Tipo incompatível na atribuição à variável '" + tok.getLexeme() + "'.",
+                                tok.getPosition());
+                        }
+                        checkUseOfUninitialized(symbol, tok);
+                        if (isUnaryOperator(m_exprOp)) {
+                            unaryCompatibilityCheck(symbol);
+                            m_exprOp = EPSILON;
+                        }
+                        m_exprLeftType = symbol->type;
+                        if (symbol->modality == Modality::VARIABLE)
+                            m_operatingVars.top()->value = symbol->value;
 
-                    if (symbol->modality == Modality::VARIABLE) {
-                      m_operatingVars.top()->value = symbol->value;
-                    }
-                }
-            }
-            else {
-                std::string literalType;
-                switch (id) {
-                case t_INT:
-                case t_BINARY:
-                case t_HEX:    literalType = "int";    break;
-                case t_REAL:   literalType = "float";  break;
-                case t_CHAR:   literalType = "char";   break;
-                case t_STRING: literalType = "string"; break;
-                default:       literalType = "";       break;
-                }
-                if (!literalType.empty()) {
-                    Symbol* lastSymbol = m_operatingVars.top().get();
-                    if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastAssign)) {
-                        m_errors.emplace_back(
-                            "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
-                            tok.getPosition());
+                        m_operatingVars.top()->isInitialized = true;
+                        appendAssemblyData(m_operatingVars.top().get());
+                        isDeclaring = false;
+                        m_operatingVars.pop();
                         pendingType.clear();
+                        state = IDLE;
                     }
-                    else {
-                      lastSymbol->value = tok.getLexeme();
-                    }
-                    m_exprLeftType = literalType;
                 }
+                break;
             }
 
-            // Qualquer atribuição completa marca o alvo como inicializado
-            if (!m_operatingVars.empty())
-                m_operatingVars.top()->isInitialized = true;
-            
-            if (isDeclaring)
-              appendAssemblyData(m_operatingVars.top().get());
-                
-            isDeclaring = false;
+            // --- Literal no RHS ---
+            {
+                std::string literalType;
+                std::string literalValue = tok.getLexeme();
+                switch (id) {
+                case t_INT: case t_BINARY: case t_HEX: literalType = "int";    break;
+                case t_REAL:                            literalType = "float";  break;
+                case t_CHAR:                            literalType = "char";   break;
+                case t_STRING:                          literalType = "string"; break;
+                default:                                break;
+                }
 
-            m_operatingVars.pop();
-            state = IDLE;
+                if (!literalType.empty()) {
+                    if (!isDeclaring) {
+                        if (!m_accLoaded &&
+                            !TypeOperationsTable::isCompatible(literalType, pendingType, lastAssign)) {
+                            m_errors.emplace_back(
+                                "Tipo incompatível na atribuição à variável '" +
+                                    m_operatingVars.top()->name + "'.",
+                                tok.getPosition());
+                        }
+                        if (!m_accLoaded) {
+                            m_assemblyGen.appendLoadImm(literalValue);
+                            if (m_bitNotPending) {
+                                m_assemblyGen.appendNot();
+                                m_bitNotPending = false;
+                            }
+                            m_accLoaded    = true;
+                            m_exprLeftType = literalType;
+                        } else {
+                            m_assemblyGen.appendBinaryOpImm(m_cgPendingOp, literalValue);
+                            m_cgPendingOp  = EPSILON;
+                            m_exprLeftType = literalType;
+                        }
+                    } else {
+                        // Declaração: armazena valor para seção .data
+                        Symbol* lastSymbol = m_operatingVars.top().get();
+                        if (!TypeOperationsTable::isCompatible(literalType, pendingType, lastAssign)) {
+                            m_errors.emplace_back(
+                                "Tipo incompatível na atribuição à variável '" + lastSymbol->type + "'.",
+                                tok.getPosition());
+                            pendingType.clear();
+                        } else {
+                            lastSymbol->value = literalValue;
+                        }
+                        m_exprLeftType = literalType;
+                        lastSymbol->isInitialized = true;
+                        appendAssemblyData(lastSymbol);
+                        isDeclaring = false;
+                        m_operatingVars.pop();
+                        pendingType.clear();
+                        state = IDLE;
+                    }
+                }
+            }
             break;
         }
         }

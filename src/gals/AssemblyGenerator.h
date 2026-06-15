@@ -3,6 +3,7 @@
 
 #include "gals_export.h"
 #include "SymbolTable.h"
+#include "Constants.h"
 #include <string>
 
 class _GALS_CLASS AssemblyGenerator
@@ -19,20 +20,27 @@ public:
 	}
 
 	void appendData(Symbol* symbol);
-
 	void appendArrayData(Symbol* symbol);
 
 	void appendFunction(std::string name);
-
 	void appendRead(Symbol* symbol);
-
 	void appendArrayRead(Symbol* symbol, std::string index);
-
 	void appendWrite(Symbol* symbol);
-
 	void appendArrayWrite(Symbol* symbol, std::string index);
-
 	void appendImmediateWrite(std::string value);
+
+	void appendLoadVar(Symbol* sym);
+	void appendLoadImm(const std::string& value);
+	void appendLoadArrayElem(Symbol* sym, int index);
+
+	void appendStoreResult(Symbol* dst, int dstIndex);
+
+	void appendBinaryOp(TokenId op, Symbol* src);
+	void appendBinaryOpImm(TokenId op, const std::string& value);
+	void appendBinaryOpWithArray(TokenId op, Symbol* src, int index);
+
+	// .text: NOT unário
+	void appendNot();
 
 private:
 

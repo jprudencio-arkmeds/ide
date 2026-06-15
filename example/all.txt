@@ -176,5 +176,84 @@ read(entrada);
 write(entrada);
 write(entrada * entrada);
 
+// --- Atribuicoes e operacoes aritmeticas / bit a bit ---
+
+int p;
+int q;
+int r;
+int bits;
+int mascara;
+int deslocado;
+int vetor_op[4];
+
+// Atribuicoes simples
+p = 12;
+q = 5;
+
+// Atribuicao de variavel para variavel
+r = p;
+
+// Aritmetica basica
+r = p + q;
+r = p - q;
+
+// Operacoes bit a bit
+bits    = p & q;
+bits    = p | q;
+bits    = p ^ q;
+mascara = ~p;
+
+// Deslocamentos (operando direito sempre literal)
+deslocado = p << 2;
+deslocado = p >> 1;
+
+// Operacoes mistas: variavel op literal
+r = p + 8;
+r = p - 3;
+r = p & 0xFF;
+r = p | 0x0F;
+r = p ^ 0xAA;
+
+// Atribuicoes compostas
+p += q;
+p -= q;
+p &= q;
+p |= q;
+p ^= q;
+p <<= 1;
+p >>= 1;
+
+// NOT unario em atribuicao
+bits = ~q;
+
+// Atribuicoes com vetores
+vetor_op[0] = 10;
+vetor_op[1] = 20;
+vetor_op[2] = 30;
+vetor_op[3] = 40;
+
+// Leitura de elemento de vetor para variavel
+r = vetor_op[0];
+r = vetor_op[2];
+
+// Expressao com elemento de vetor como primeiro operando
+r = vetor_op[0] + q;
+r = vetor_op[1] - p;
+r = vetor_op[0] & q;
+r = vetor_op[1] | p;
+r = vetor_op[2] ^ q;
+
+// Resultado de expressao armazenado em vetor
+vetor_op[0] = p + q;
+vetor_op[1] = p - q;
+vetor_op[2] = p & q;
+vetor_op[3] = p | q;
+
+write(r);
+write(bits);
+write(deslocado);
+write(vetor_op[0]);
+write(vetor_op[1]);
+
 /***/
 /*asdasdsada**/
