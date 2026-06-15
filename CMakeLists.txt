@@ -47,6 +47,13 @@ add_executable(compilador-cmd ${CLI_SOURCES} ${HEADERS})
 target_include_directories(compilador-cmd PRIVATE src)
 target_link_libraries(compilador-cmd gals)
 
+# Documentation files (visible in IDE)
+file(GLOB DOC_ROOT_FILES docs/*.md)
+file(GLOB DOC_BIPIV_FILES docs/BIP-IV/*.md docs/BIP-IV/example/*.asm)
+add_custom_target(docs SOURCES ${DOC_ROOT_FILES} ${DOC_BIPIV_FILES})
+source_group("docs" FILES ${DOC_ROOT_FILES})
+source_group("docs\\BIP-IV" FILES ${DOC_BIPIV_FILES})
+
 # GUI executable (only if Qt6 is available)
 if (Qt6Widgets_FOUND)
     set(CMAKE_AUTOMOC ON)
