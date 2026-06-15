@@ -7,23 +7,36 @@
 
 class _GALS_CLASS AssemblyGenerator
 {
-	public:
-		AssemblyGenerator() = default;
-		virtual ~AssemblyGenerator() = default;
+public:
+	AssemblyGenerator() = default;
+	virtual ~AssemblyGenerator() = default;
 
-    std::string getAssembly() const { return m_assemblyData + "\n" + m_assemblyText; }
+	std::string getAssembly() const { return m_assemblyData + "\n" + m_assemblyText; }
 
-    void reset() {
-      m_assemblyData = ".data\n";
-      m_assemblyText = ".text\n";
-    }
+	void reset() {
+		m_assemblyData = ".data\n";
+		m_assemblyText = ".text\n";
+	}
 
-		void appendData(Symbol* symbol);
+	void appendData(Symbol* symbol);
 
-		void appendFunction(std::string name);
-	private:
-		std::string m_assemblyData = ".data\n";
-    std::string m_assemblyText = ".text\n";
+	void appendArrayData(Symbol* symbol);
+
+	void appendFunction(std::string name);
+
+	void appendRead(Symbol* symbol);
+
+	void appendWrite(Symbol* symbol);
+
+	void appendImmediateWrite(std::string value);
+
+private:
+	std::string dataName(const Symbol* symbol) const {
+		return symbol->name + "_" + std::to_string(symbol->position);
+	}
+
+	std::string m_assemblyData = ".data\n";
+	std::string m_assemblyText = ".text\n";
 };
 
 #endif

@@ -19,6 +19,7 @@ struct _GALS_CLASS Symbol {
   bool        isInitialized = false;
   bool        isFunction    = false;
   bool        isUsed        = false;
+  int         arraySize = 0;
 
   std::string name;
   std::string value;
@@ -48,7 +49,7 @@ public:
             return nullptr;
         Modality mod = isFunction ? Modality::FUNCTION : Modality::VARIABLE;
         auto symbol = std::make_shared<Symbol>(Symbol{
-            type, mod, position, depth(), false, isFunction, false, name, ""
+            type, mod, position, depth(), false, isFunction, false, 0, name, ""
         });
         top[name] = symbol;
         m_allSymbols.push_back(symbol);

@@ -151,10 +151,15 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     if (tok.getLexeme() == "read") {
                         const size_t closeParen = findMatchingParen(tokens, i + 1);
                         for (size_t j = i + 2; j < closeParen && j < tokens.size(); ++j) {
-                            if (tokens[j].getId() != t_ID) continue;
+                            if (tokens[j].getId() != t_ID) {
+                                m_errors.emplace_back("Não é possível ler uma constante", tokens[j].getPosition());
+                                continue;
+                            }
 
-                            if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition()))
+                            if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
                                 readSymbol->isInitialized = true;
+                                m_assemblyGen.appendRead(readSymbol.get());
+                            }
                         }
                         i = closeParen;
                     }
@@ -254,6 +259,28 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                     } else if (isArray) {
                         symbol->modality = Modality::ARRAY;
                     }
+                }
+
+                if (isArray && symbol) {
+                    // Parse [tamanho]
+                    i++; // '['
+                    i++; // tamanho
+                    int arrSize = 0;
+                    if (i < tokens.size() && (tokens[i].getId() == t_INT || tokens[i].getId() == t_HEX || tokens[i].getId() == t_BINARY)) {
+                        arrSize = std::stoi(tokens[i].getLexeme(), nullptr, 0);
+                    }
+                    i++; // ']'
+                    if (i < tokens.size() && tokens[i].getId() == t_KEY_RIGHT_BRACKET) {
+                        i++; // skip ']'
+                    }
+
+                    symbol->arraySize = arrSize;
+                    symbol->isInitialized = true;
+                    m_assemblyGen.appendArrayData(symbol.get());
+                    state = IDLE;
+                    pendingType.clear(); // 
+                    isDeclaring = false;
+                    break;
                 }
 
                 if (isFunction) {
@@ -410,7 +437,11 @@ int Semantico::checkUseOfUninitializedInParams(const std::vector<Token>& tokens,
         if (tokens[j].getId() == t_ID) {
             if (auto writeSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
                 checkUseOfUninitialized(writeSymbol, tokens[j]);
+                m_assemblyGen.appendWrite(writeSymbol.get());
             }
+        }
+        else if (tokens[j].getId() == t_INT) {
+            m_assemblyGen.appendImmediateWrite(tokens[j].getLexeme());
         }
     }
 
