@@ -20,8 +20,19 @@ void AssemblyGenerator::appendFunction(std::string name) {
 }
 
 void AssemblyGenerator::appendRead(Symbol* symbol) {
-  m_assemblyText += "\tLD $in_port\n";
-  m_assemblyText += "\tSTO " + dataName(symbol) + "\n";
+    m_assemblyText += "\tLD $in_port\n";
+    m_assemblyText += "\tSTO " + dataName(symbol) + "\n";
+}
+
+void AssemblyGenerator::appendArrayRead(Symbol* symbol, std::string index) {
+    appendIndexAccess(index);
+    m_assemblyText += "\tLD $in_port\n";
+    m_assemblyText += "\tSTOV " + dataName(symbol) + "\n";
+}
+
+void AssemblyGenerator::appendIndexAccess(std::string index) {
+    m_assemblyText += "\tLDI " + index + "\n";
+    m_assemblyText += "\tSTO $indr\n";
 }
 
 void AssemblyGenerator::appendWrite(Symbol* symbol) {
@@ -31,5 +42,11 @@ void AssemblyGenerator::appendWrite(Symbol* symbol) {
 
 void AssemblyGenerator::appendImmediateWrite(std::string value) {
     m_assemblyText += "\tLDI " + value + "\n";
+    m_assemblyText += "\tSTO $out_port\n";
+}
+
+void AssemblyGenerator::appendArrayWrite(Symbol* symbol, std::string index) {
+    appendIndexAccess(index);
+    m_assemblyText += "\tLDV " + dataName(symbol) + "\n";
     m_assemblyText += "\tSTO $out_port\n";
 }

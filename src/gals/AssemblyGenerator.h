@@ -26,11 +26,18 @@ public:
 
 	void appendRead(Symbol* symbol);
 
+	void appendArrayRead(Symbol* symbol, std::string index);
+
 	void appendWrite(Symbol* symbol);
+
+	void appendArrayWrite(Symbol* symbol, std::string index);
 
 	void appendImmediateWrite(std::string value);
 
 private:
+
+	void appendIndexAccess(std::string index);
+
 	std::string dataName(const Symbol* symbol) const {
 		return symbol->name + "_" + std::to_string(symbol->position);
 	}

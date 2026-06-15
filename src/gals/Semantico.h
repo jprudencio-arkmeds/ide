@@ -36,6 +36,8 @@ private:
 
     void appendAssemblyData(Symbol* symbol);
 
+    int getVectorIndex(const std::vector<Token>& tokens, size_t& index) const;
+
     SymbolTable                  m_table;
     std::vector<SemanticError>   m_errors;
     std::vector<SemanticWarning> m_warnings;

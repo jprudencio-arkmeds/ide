@@ -153,12 +153,19 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                         for (size_t j = i + 2; j < closeParen && j < tokens.size(); ++j) {
                             if (tokens[j].getId() != t_ID) {
                                 m_errors.emplace_back("Não é possível ler uma constante", tokens[j].getPosition());
-                                continue;
+                                break;
                             }
 
                             if (auto readSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
                                 readSymbol->isInitialized = true;
-                                m_assemblyGen.appendRead(readSymbol.get());
+                                if (readSymbol->arraySize > 0) {
+                                    const std::string index = std::to_string(getVectorIndex(tokens, j));
+                                    m_assemblyGen.appendArrayRead(readSymbol.get(), index);
+                                }
+                                else {
+                                    m_assemblyGen.appendRead(readSymbol.get());
+                                }
+                                break;
                             }
                         }
                         i = closeParen;
@@ -262,19 +269,7 @@ void Semantico::analyze(const std::vector<Token>& tokens) {
                 }
 
                 if (isArray && symbol) {
-                    // Parse [tamanho]
-                    i++; // '['
-                    i++; // tamanho
-                    int arrSize = 0;
-                    if (i < tokens.size() && (tokens[i].getId() == t_INT || tokens[i].getId() == t_HEX || tokens[i].getId() == t_BINARY)) {
-                        arrSize = std::stoi(tokens[i].getLexeme(), nullptr, 0);
-                    }
-                    i++; // ']'
-                    if (i < tokens.size() && tokens[i].getId() == t_KEY_RIGHT_BRACKET) {
-                        i++; // skip ']'
-                    }
-
-                    symbol->arraySize = arrSize;
+                    symbol->arraySize = getVectorIndex(tokens, i);
                     symbol->isInitialized = true;
                     m_assemblyGen.appendArrayData(symbol.get());
                     state = IDLE;
@@ -437,7 +432,13 @@ int Semantico::checkUseOfUninitializedInParams(const std::vector<Token>& tokens,
         if (tokens[j].getId() == t_ID) {
             if (auto writeSymbol = lookupSymbol(tokens[j].getLexeme(), tokens[j].getPosition())) {
                 checkUseOfUninitialized(writeSymbol, tokens[j]);
-                m_assemblyGen.appendWrite(writeSymbol.get());
+                if (writeSymbol->arraySize > 0) {
+                    const std::string index = std::to_string(getVectorIndex(tokens, j));
+                    m_assemblyGen.appendArrayWrite(writeSymbol.get(), index);
+                }
+                else {
+                    m_assemblyGen.appendWrite(writeSymbol.get());
+                }
             }
         }
         else if (tokens[j].getId() == t_INT) {
@@ -468,4 +469,20 @@ void Semantico::appendAssemblyData(Symbol* var) {
   if (var->modality == Modality::VARIABLE) {
     m_assemblyGen.appendData(var);
   }
+}
+
+int Semantico::getVectorIndex(const std::vector<Token>& tokens, size_t& index) const {
+    // Parse [tamanho]
+    index++; // '['
+    index++; // tamanho
+    int indexValue = 0;
+    if (tokens[index].getId() == t_INT || tokens[index].getId() == t_HEX || tokens[index].getId() == t_BINARY) {
+        indexValue = std::stoi(tokens[index].getLexeme(), nullptr, 0);
+    }
+    index++; // ']'
+    if (index < tokens.size() && tokens[index].getId() == t_KEY_RIGHT_BRACKET) {
+        index++; // skip ']'
+    }
+
+    return indexValue;
 }
