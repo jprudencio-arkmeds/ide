@@ -1,0 +1,61 @@
+// TESTES DE ESCOPO: variaveis e vetores com mesmo nome em escopos diferentes
+
+
+// A. DEVE PASSAR: mesmo nome em escopos irmaos
+// Esperado: sem erro, saida 5 e 10
+
+void mainA() {
+    if (1 > 0) {
+        int a = 5;
+        write(a);
+    }
+    if (1 > 0) {
+        int a = 10;
+        write(a);
+    }
+}
+
+
+// B. DEVE PASSAR: escopo interno esconde o externo, externo volta apos o fechamento
+// Esperado: sem erro, saida 99 e 1
+
+void mainB() {
+    int a = 1;
+    if (1 > 0) {
+        int a = 99;
+        write(a);
+    }
+    write(a);
+}
+
+
+// C. DEVE PASSAR: variavel e vetor com mesmo nome em escopos diferentes
+// Esperado: sem erro, saida 42 e 7
+
+void mainC() {
+    int v[3];
+    v[0] = 7;
+    if (1 > 0) {
+        int v = 42;
+        write(v);
+    }
+    write(v[0]);
+}
+
+
+// D. DEVE FALHAR: mesma variavel declarada duas vezes no mesmo escopo
+// Esperado: erro "ja declarada neste escopo"
+
+void mainD() {
+    int a = 1;
+    int a = 2;
+}
+
+
+// E. DEVE FALHAR: variavel e vetor com mesmo nome no mesmo escopo
+// Esperado: erro "ja declarada neste escopo"
+
+void mainE() {
+    int a = 5;
+    int a[3];
+}
