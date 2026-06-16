@@ -68,7 +68,7 @@ void AssemblyGenerator::appendLoadVar(Symbol* sym) {
 }
 
 void AssemblyGenerator::appendLoadImm(const std::string& value) {
-    m_assemblyText += "\tLDI " + toIntLiteral(value) + "\n";
+    m_assemblyText += "\tLDI " + value + "\n";
 }
 
 void AssemblyGenerator::appendLoadArrayElem(Symbol* sym, int index) {
@@ -123,7 +123,7 @@ void AssemblyGenerator::appendBinaryOp(TokenId op, Symbol* src) {
 void AssemblyGenerator::appendBinaryOpImm(TokenId op, const std::string& value) {
     const std::string instr = binaryImmInstr(op);
     if (!instr.empty())
-        m_assemblyText += "\t" + instr + " " + toIntLiteral(value) + "\n";
+        m_assemblyText += "\t" + instr + " " + value + "\n";
 }
 
 void AssemblyGenerator::appendBinaryOpWithArray(TokenId op, Symbol* src, int index) {
