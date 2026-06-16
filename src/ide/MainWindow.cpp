@@ -219,6 +219,11 @@ void MainWindow::setupMenus() {
     compileAction->setShortcut(QKeySequence(Qt::Key_F5));
     connect(compileAction, &QAction::triggered, this, &MainWindow::compile);
     menuBar()->addAction(compileAction);
+
+    auto* exportAction = new QAction("&Export .asm", this);
+    exportAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+    connect(exportAction, &QAction::triggered, this, &MainWindow::exportAsm);
+    menuBar()->addAction(exportAction);
 }
 
 void MainWindow::setupStatusBar() {
@@ -300,6 +305,37 @@ bool MainWindow::saveFileAs() {
     if (path.isEmpty()) return false;
     m_currentFile = path;
     return saveFile();
+}
+
+// ── Export .asm ─────────────────────────────────────────────────────────────
+
+void MainWindow::exportAsm() {
+    const QString asm_text = m_asmPanel->toPlainText();
+    if (asm_text.trimmed().isEmpty() ||
+        asm_text.trimmed() == ".data\n\t.text\n\t") {
+        QMessageBox::warning(this, "Export .asm",
+            "Nenhum assembly gerado. Compile o código primeiro (F5).");
+        return;
+    }
+
+    QString defaultName = "output.asm";
+    if (!m_currentFile.isEmpty())
+        defaultName = QFileInfo(m_currentFile).completeBaseName() + ".asm";
+
+    QString path = QFileDialog::getSaveFileName(this, "Exportar Assembly", defaultName,
+        "Assembly BIP (*.asm);;Todos os arquivos (*)");
+    if (path.isEmpty()) return;
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "Erro", "Não foi possível salvar: " + path);
+        return;
+    }
+    QTextStream out(&file);
+    out << asm_text;
+    out.flush();
+    file.close();
+    m_statusLabel->setText("Assembly exportado: " + QFileInfo(path).fileName());
 }
 
 // ── Compile pipeline ────────────────────────────────────────────────────────

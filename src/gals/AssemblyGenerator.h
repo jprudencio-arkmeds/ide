@@ -12,7 +12,7 @@ public:
 	AssemblyGenerator() = default;
 	virtual ~AssemblyGenerator() = default;
 
-	std::string getAssembly() const { return m_assemblyData + "\n" + m_assemblyText; }
+	std::string getAssembly() const { return m_assemblyData + "\n" + m_assemblyText + "\tHLT 0\n"; }
 
 	void reset() {
 		m_assemblyData = ".data\n";

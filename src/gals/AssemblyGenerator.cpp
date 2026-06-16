@@ -1,7 +1,8 @@
 #include "AssemblyGenerator.h"
 
 void AssemblyGenerator::appendData(Symbol* symbol) {
-  m_assemblyData += "\t" + dataName(symbol) + " : " + symbol->value + "\n";
+  const std::string val = symbol->value.empty() ? "0" : symbol->value;
+  m_assemblyData += "\t" + dataName(symbol) + " : " + val + "\n";
 }
 
 void AssemblyGenerator::appendArrayData(Symbol* symbol) {
@@ -16,7 +17,7 @@ void AssemblyGenerator::appendFunction(std::string name) {
   for (auto& c : name) {
     c = std::toupper(c);
   }
-  m_assemblyText += "\t" + name + ":\n";
+  m_assemblyText += name + ":\n";
 }
 
 void AssemblyGenerator::appendRead(Symbol* symbol) {

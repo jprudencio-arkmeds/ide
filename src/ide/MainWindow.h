@@ -23,6 +23,7 @@ private slots:
     bool saveFile();
     bool saveFileAs();
     void compile();
+    void exportAsm();
     void updateCursorPosition();
 
 private:
