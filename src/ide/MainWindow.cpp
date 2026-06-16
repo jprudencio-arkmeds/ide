@@ -391,9 +391,10 @@ void MainWindow::compile() {
         for (const auto& e : errors)   makeLineSel(e.getPosition(), QColor("#2d0c0c"));
         m_editor->setErrorSelections(editorSels);
 
+        m_asmPanel->setPlainText(semantico.getAssembly().c_str());
+
         if (errors.empty()) {
             appendMessage(m_compilePanel, "  No semantic errors.", MSG_SUCCESS);
-            m_asmPanel->setPlainText(semantico.getAssembly().c_str());
         } else {
             for (const auto& e : errors) {
                 int line, col;
