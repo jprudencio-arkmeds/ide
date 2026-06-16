@@ -1,7 +1,16 @@
 #include "AssemblyGenerator.h"
+#include <cmath>
+
+static std::string toIntLiteral(const std::string& value) {
+    if (value.find('.') != std::string::npos) {
+        return std::to_string(static_cast<int>(std::stof(value)));
+    }
+    return value;
+}
 
 void AssemblyGenerator::appendData(Symbol* symbol) {
-  const std::string val = symbol->value.empty() ? "0" : symbol->value;
+  std::string val = symbol->value.empty() ? "0" : symbol->value;
+  if (!val.empty() && val.front() == '"') val = "0";
   m_assemblyData += "\t" + dataName(symbol) + " : " + val + "\n";
 }
 
@@ -37,6 +46,8 @@ void AssemblyGenerator::appendIndexAccess(std::string index) {
 }
 
 void AssemblyGenerator::appendWrite(Symbol* symbol) {
+    // BIP IV não suporta strings
+    if (symbol->type == "string") return;
     m_assemblyText += "\tLD " + dataName(symbol) + "\n";
     m_assemblyText += "\tSTO $out_port\n";
 }
@@ -57,7 +68,7 @@ void AssemblyGenerator::appendLoadVar(Symbol* sym) {
 }
 
 void AssemblyGenerator::appendLoadImm(const std::string& value) {
-    m_assemblyText += "\tLDI " + value + "\n";
+    m_assemblyText += "\tLDI " + toIntLiteral(value) + "\n";
 }
 
 void AssemblyGenerator::appendLoadArrayElem(Symbol* sym, int index) {
@@ -112,7 +123,7 @@ void AssemblyGenerator::appendBinaryOp(TokenId op, Symbol* src) {
 void AssemblyGenerator::appendBinaryOpImm(TokenId op, const std::string& value) {
     const std::string instr = binaryImmInstr(op);
     if (!instr.empty())
-        m_assemblyText += "\t" + instr + " " + value + "\n";
+        m_assemblyText += "\t" + instr + " " + toIntLiteral(value) + "\n";
 }
 
 void AssemblyGenerator::appendBinaryOpWithArray(TokenId op, Symbol* src, int index) {
