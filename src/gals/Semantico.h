@@ -52,6 +52,23 @@ private:
     bool    m_accLoaded       = false;
     TokenId m_cgPendingOp     = EPSILON;
     bool    m_bitNotPending   = false;
+
+    // ── Control flow ──────────────────────────────────────────────────────────
+    struct ControlFlowFrame {
+        enum Type { IF, WHILE, DO_WHILE, FOR } type;
+        std::string testLabel;   // while/for: re-test point; do-while: body start
+        std::string endLabel;    // after the whole construct
+        std::string elseLabel;   // if: skip-body target (doubles as end for simple if)
+        std::string incrLabel;   // for: increment label
+        std::string condBuffer;  // for: buffered condition code
+        std::string incrBuffer;  // for: buffered increment code
+        int  braceDepth  = 0;    // m_currentBraceDepth when body { opened
+        bool bodyIsBlock = false;
+        bool bodyDone    = false; // do-while: body done; if: in else branch
+    };
+
+    std::stack<ControlFlowFrame> m_cfStack;
+    int m_currentBraceDepth = 0;
 };
 
 #endif
