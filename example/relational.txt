@@ -1,0 +1,47 @@
+// T5 - Operacoes relacionais e desvio condicional
+
+int a;
+int b;
+int r;
+
+a = 7;
+b = 3;
+
+// Todos os operadores relacionais
+r = a > b;   write(r);   // 1
+r = a < b;   write(r);   // 0
+r = a >= 7;  write(r);   // 1
+r = a <= 6;  write(r);   // 0
+r = a == 7;  write(r);   // 1
+r = a != b;  write(r);   // 1
+
+// if simples
+if (a > 0) {
+    write(1);   // impresso
+}
+
+// if-else
+if (a < 0) {
+    write(99);  // no impresso
+} else {
+    write(0);   // impresso
+}
+
+// if-else if-else (cadeia)
+if (a > 100) {
+    write(3);
+} else if (a > 10) {
+    write(2);
+} else if (a > 5) {
+    write(1);   // impresso (7 > 5)
+} else {
+    write(0);
+}
+
+// Relacional como condio de lao
+int i;
+i = 10;
+while (i != 0) {
+    i = i - 1;
+}
+write(i);       // 0

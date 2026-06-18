@@ -1,0 +1,108 @@
+// T5 - Geracao de Codigo: Estruturas de Controle e Operacoes Relacionais
+
+int a;
+int b;
+int resultado;
+int i;
+int soma;
+int x;
+
+// 1. Operaes relacionais (resultado 0 ou 1 no ACC)
+a = 10;
+b = 3;
+
+resultado = a > b;
+write(resultado);   // esperado: 1
+
+resultado = a < b;
+write(resultado);   // esperado: 0
+
+resultado = a >= 10;
+write(resultado);   // esperado: 1
+
+resultado = a <= 9;
+write(resultado);   // esperado: 0
+
+resultado = a == 10;
+write(resultado);   // esperado: 1
+
+resultado = a != b;
+write(resultado);   // esperado: 1
+
+// 2. Desvio condicional simples (if sem else)
+x = 5;
+if (x > 0) {
+    write(x);       // esperado: 5 (impresso)
+}
+
+// 3. Desvio condicional composto (if-else)
+if (a > 100) {
+    write(1);       // no executado
+} else {
+    write(0);       // esperado: 0
+}
+
+// 4. Cadeia if-else if-else
+if (a > 100) {
+    write(3);
+} else if (a > 50) {
+    write(2);
+} else {
+    write(1);       // esperado: 1
+}
+
+// 5. Lao while
+i = 0;
+soma = 0;
+while (i < 5) {
+    soma = soma + i;
+    i = i + 1;
+}
+write(soma);        // esperado: 10  (0+1+2+3+4)
+
+// 6. Lao do-while
+x = 1;
+do {
+    x = x + 1;
+} while (x < 5);
+write(x);           // esperado: 5
+
+// 7. Lao for com varivel de controle
+soma = 0;
+for (i = 1; i <= 10; i = i + 1) {
+    soma = soma + i;
+}
+write(soma);        // esperado: 55
+
+// 8. Aninhamentos: for com if interno
+soma = 0;
+for (i = 1; i <= 10; i = i + 1) {
+    if (i == 5) {
+        soma = soma + 100;
+    } else {
+        soma = soma + i;
+    }
+}
+write(soma);        // esperado: (1+2+3+4)=10, i=5+100=110, (6+7+8+9+10)=40  150
+
+// 9. Aninhamento: while dentro de if
+a = 1;
+if (a == 1) {
+    i = 0;
+    while (i < 3) {
+        write(i);   // esperado: 0, 1, 2
+        i = i + 1;
+    }
+}
+
+// 10. Aninhamento: for dentro de while
+i = 0;
+soma = 0;
+while (i < 3) {
+    int j;
+    for (j = 0; j < 3; j = j + 1) {
+        soma = soma + 1;
+    }
+    i = i + 1;
+}
+write(soma);        // esperado: 9  (3 iteraes  3)
