@@ -17,6 +17,9 @@ public:
 	void reset() {
 		m_assemblyData = ".data\n";
 		m_assemblyText = ".text\n";
+		m_labelCounter = 0;
+		m_buffering    = false;
+		m_buffer.clear();
 	}
 
 	void appendData(Symbol* symbol);
@@ -39,11 +42,26 @@ public:
 	void appendBinaryOpImm(TokenId op, const std::string& value);
 	void appendBinaryOpWithArray(TokenId op, Symbol* src, int index);
 
-	// .text: NOT unário
 	void appendNot();
 
-private:
+	// Control flow: labels and jumps
+	std::string nextLabel();
+	void appendLabel(const std::string& label);
+	void appendJmp(const std::string& label);
+	void appendJmpZ(const std::string& label);
+	void appendJmpN(const std::string& label);
 
+	// Relational comparison: ACC OP rhs → 0 or 1 in ACC
+	void appendRelationalOp(const std::string& op, Symbol* rhs);
+	void appendRelationalOpImm(const std::string& op, const std::string& val);
+
+	// Buffering (for for-loop condition and increment deferral)
+	void startBuffer();
+	void stopBuffer(std::string& out);
+	void appendBuffered(const std::string& code);
+
+private:
+	void emitText(const std::string& s);
 	void appendIndexAccess(std::string index);
 
 	std::string dataName(const Symbol* symbol) const {
@@ -52,6 +70,9 @@ private:
 
 	std::string m_assemblyData = ".data\n";
 	std::string m_assemblyText = ".text\n";
+	int         m_labelCounter = 0;
+	bool        m_buffering    = false;
+	std::string m_buffer;
 };
 
 #endif

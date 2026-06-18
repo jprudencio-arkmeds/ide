@@ -8,85 +8,87 @@ static std::string toIntLiteral(const std::string& value) {
     return value;
 }
 
+void AssemblyGenerator::emitText(const std::string& s) {
+    if (m_buffering) m_buffer += s;
+    else             m_assemblyText += s;
+}
+
 void AssemblyGenerator::appendData(Symbol* symbol) {
-  std::string val = symbol->value.empty() ? "0" : symbol->value;
-  if (!val.empty() && val.front() == '"') val = "0";
-  m_assemblyData += "\t" + dataName(symbol) + " : " + val + "\n";
+    std::string val = symbol->value.empty() ? "0" : symbol->value;
+    if (!val.empty() && val.front() == '"') val = "0";
+    m_assemblyData += "\t" + dataName(symbol) + " : " + val + "\n";
 }
 
 void AssemblyGenerator::appendArrayData(Symbol* symbol) {
-  std::string values = "0";
-  for (size_t i = 1; i < symbol->arraySize; ++i) {
-    values += ",0";
-  }
-  m_assemblyData += "\t" + dataName(symbol) + " : " + values + "\n";
+    std::string values = "0";
+    for (size_t i = 1; i < symbol->arraySize; ++i) {
+        values += ",0";
+    }
+    m_assemblyData += "\t" + dataName(symbol) + " : " + values + "\n";
 }
 
 void AssemblyGenerator::appendFunction(std::string name) {
-  for (auto& c : name) {
-    c = std::toupper(c);
-  }
-  m_assemblyText += name + ":\n";
+    for (auto& c : name) c = std::toupper(c);
+    emitText(name + ":\n");
 }
 
 void AssemblyGenerator::appendRead(Symbol* symbol) {
-    m_assemblyText += "\tLD $in_port\n";
-    m_assemblyText += "\tSTO " + dataName(symbol) + "\n";
+    emitText("\tLD $in_port\n");
+    emitText("\tSTO " + dataName(symbol) + "\n");
 }
 
 void AssemblyGenerator::appendArrayRead(Symbol* symbol, std::string index) {
     appendIndexAccess(index);
-    m_assemblyText += "\tLD $in_port\n";
-    m_assemblyText += "\tSTOV " + dataName(symbol) + "\n";
+    emitText("\tLD $in_port\n");
+    emitText("\tSTOV " + dataName(symbol) + "\n");
 }
 
 void AssemblyGenerator::appendIndexAccess(std::string index) {
-    m_assemblyText += "\tLDI " + index + "\n";
-    m_assemblyText += "\tSTO $indr\n";
+    emitText("\tLDI " + index + "\n");
+    emitText("\tSTO $indr\n");
 }
 
 void AssemblyGenerator::appendWrite(Symbol* symbol) {
     // BIP IV não suporta strings
     if (symbol->type == "string") return;
-    m_assemblyText += "\tLD " + dataName(symbol) + "\n";
-    m_assemblyText += "\tSTO $out_port\n";
+    emitText("\tLD " + dataName(symbol) + "\n");
+    emitText("\tSTO $out_port\n");
 }
 
 void AssemblyGenerator::appendImmediateWrite(std::string value) {
-    m_assemblyText += "\tLDI " + value + "\n";
-    m_assemblyText += "\tSTO $out_port\n";
+    emitText("\tLDI " + value + "\n");
+    emitText("\tSTO $out_port\n");
 }
 
 void AssemblyGenerator::appendArrayWrite(Symbol* symbol, std::string index) {
     appendIndexAccess(index);
-    m_assemblyText += "\tLDV " + dataName(symbol) + "\n";
-    m_assemblyText += "\tSTO $out_port\n";
+    emitText("\tLDV " + dataName(symbol) + "\n");
+    emitText("\tSTO $out_port\n");
 }
 
 void AssemblyGenerator::appendLoadVar(Symbol* sym) {
-    m_assemblyText += "\tLD " + dataName(sym) + "\n";
+    emitText("\tLD " + dataName(sym) + "\n");
 }
 
 void AssemblyGenerator::appendLoadImm(const std::string& value) {
-    m_assemblyText += "\tLDI " + value + "\n";
+    emitText("\tLDI " + value + "\n");
 }
 
 void AssemblyGenerator::appendLoadArrayElem(Symbol* sym, int index) {
-    m_assemblyText += "\tLDI " + std::to_string(index) + "\n";
-    m_assemblyText += "\tSTO $indr\n";
-    m_assemblyText += "\tLDV " + dataName(sym) + "\n";
+    emitText("\tLDI " + std::to_string(index) + "\n");
+    emitText("\tSTO $indr\n");
+    emitText("\tLDV " + dataName(sym) + "\n");
 }
 
-// Armazena ACC no destino. Para vetores usa temporário 1000 para não perder ACC ao setar $indr.
 void AssemblyGenerator::appendStoreResult(Symbol* dst, int dstIndex) {
     if (dstIndex < 0) {
-        m_assemblyText += "\tSTO " + dataName(dst) + "\n";
+        emitText("\tSTO " + dataName(dst) + "\n");
     } else {
-        m_assemblyText += "\tSTO 1000\n";
-        m_assemblyText += "\tLDI " + std::to_string(dstIndex) + "\n";
-        m_assemblyText += "\tSTO $indr\n";
-        m_assemblyText += "\tLD 1000\n";
-        m_assemblyText += "\tSTOV " + dataName(dst) + "\n";
+        emitText("\tSTO 1000\n");
+        emitText("\tLDI " + std::to_string(dstIndex) + "\n");
+        emitText("\tSTO $indr\n");
+        emitText("\tLD 1000\n");
+        emitText("\tSTOV " + dataName(dst) + "\n");
     }
 }
 
@@ -117,35 +119,191 @@ static std::string binaryImmInstr(TokenId op) {
 void AssemblyGenerator::appendBinaryOp(TokenId op, Symbol* src) {
     const std::string instr = binaryInstr(op);
     if (!instr.empty())
-        m_assemblyText += "\t" + instr + " " + dataName(src) + "\n";
+        emitText("\t" + instr + " " + dataName(src) + "\n");
 }
 
 void AssemblyGenerator::appendBinaryOpImm(TokenId op, const std::string& value) {
     const std::string instr = binaryImmInstr(op);
     if (!instr.empty())
-        m_assemblyText += "\t" + instr + " " + value + "\n";
+        emitText("\t" + instr + " " + value + "\n");
 }
 
 void AssemblyGenerator::appendBinaryOpWithArray(TokenId op, Symbol* src, int index) {
     if (op == t_KEY_MINUS) {
-        m_assemblyText += "\tSTO 1001\n";
-        m_assemblyText += "\tLDI " + std::to_string(index) + "\n";
-        m_assemblyText += "\tSTO $indr\n";
-        m_assemblyText += "\tLDV " + dataName(src) + "\n";
-        m_assemblyText += "\tSTO 1002\n";
-        m_assemblyText += "\tLD 1001\n";
-        m_assemblyText += "\tSUB 1002\n";
+        emitText("\tSTO 1001\n");
+        emitText("\tLDI " + std::to_string(index) + "\n");
+        emitText("\tSTO $indr\n");
+        emitText("\tLDV " + dataName(src) + "\n");
+        emitText("\tSTO 1002\n");
+        emitText("\tLD 1001\n");
+        emitText("\tSUB 1002\n");
     } else {
         const std::string instr = binaryInstr(op);
         if (instr.empty()) return;
-        m_assemblyText += "\tSTO 1001\n";
-        m_assemblyText += "\tLDI " + std::to_string(index) + "\n";
-        m_assemblyText += "\tSTO $indr\n";
-        m_assemblyText += "\tLDV " + dataName(src) + "\n";
-        m_assemblyText += "\t" + instr + " 1001\n";
+        emitText("\tSTO 1001\n");
+        emitText("\tLDI " + std::to_string(index) + "\n");
+        emitText("\tSTO $indr\n");
+        emitText("\tLDV " + dataName(src) + "\n");
+        emitText("\t" + instr + " 1001\n");
     }
 }
 
 void AssemblyGenerator::appendNot() {
-    m_assemblyText += "\tNOT\n";
+    emitText("\tNOT\n");
+}
+
+// ── Control flow ──────────────────────────────────────────────────────────────
+
+std::string AssemblyGenerator::nextLabel() {
+    return "_CF" + std::to_string(m_labelCounter++);
+}
+
+void AssemblyGenerator::appendLabel(const std::string& label) {
+    emitText(label + ":\n");
+}
+
+void AssemblyGenerator::appendJmp(const std::string& label) {
+    emitText("\tJMP " + label + "\n");
+}
+
+void AssemblyGenerator::appendJmpZ(const std::string& label) {
+    emitText("\tJMPZ " + label + "\n");
+}
+
+void AssemblyGenerator::appendJmpN(const std::string& label) {
+    emitText("\tJMPN " + label + "\n");
+}
+
+// ACC holds left operand; after call ACC = (left OP rhs) ? 1 : 0
+void AssemblyGenerator::appendRelationalOp(const std::string& op, Symbol* rhs) {
+    const std::string lbl1 = nextLabel();
+    const std::string lbl2 = nextLabel();
+    const std::string r    = dataName(rhs);
+
+    if (op == "<") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == ">") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");  // negative  → a < b → false
+        emitText("\tJMPZ " + lbl1 + "\n");  // zero      → a == b → false
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "<=") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");  // negative → a < b → true
+        emitText("\tJMPZ " + lbl1 + "\n");  // zero     → a == b → true
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == ">=") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");  // negative → a < b → false
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "==") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");  // zero → equal → true
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "!=") {
+        emitText("\tSUB "  + r    + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");  // zero → equal → false
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    }
+}
+
+void AssemblyGenerator::appendRelationalOpImm(const std::string& op, const std::string& val) {
+    const std::string lbl1 = nextLabel();
+    const std::string lbl2 = nextLabel();
+
+    if (op == "<") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == ">") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "<=") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == ">=") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPN " + lbl1 + "\n");
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "==") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");
+        emitText("\tLDI 0\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 1\n");
+        emitText(lbl2 + ":\n");
+    } else if (op == "!=") {
+        emitText("\tSUBI " + val  + "\n");
+        emitText("\tJMPZ " + lbl1 + "\n");
+        emitText("\tLDI 1\n");
+        emitText("\tJMP "  + lbl2 + "\n");
+        emitText(lbl1 + ":\n");
+        emitText("\tLDI 0\n");
+        emitText(lbl2 + ":\n");
+    }
+}
+
+// ── Buffering ────────────────────────────────────────────────────────────────
+
+void AssemblyGenerator::startBuffer() {
+    m_buffering = true;
+    m_buffer.clear();
+}
+
+void AssemblyGenerator::stopBuffer(std::string& out) {
+    out = m_buffer;
+    m_buffer.clear();
+    m_buffering = false;
+}
+
+void AssemblyGenerator::appendBuffered(const std::string& code) {
+    // Always writes to main text (never re-buffered)
+    m_assemblyText += code;
 }
